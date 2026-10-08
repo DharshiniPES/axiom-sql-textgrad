@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axiomsql"
+version = "0.1.0"
+description = "Adaptive Textual Gradient Optimization with Dynamic Execution Feedback for Multi-Stage SQL Planning"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Dharshini"}
+]
+keywords = [
+    "textgrad",
+    "text-to-sql",
+    "llm",
+    "automatic-differentiation",
+    "adaptive-stopping",
+    "query-planning",
+    "relational-databases",
+    "dspy",
+    "prompt-optimization"
+]
+dependencies = [
+    "streamlit>=1.30.0",
+    "pandas>=2.0.0",
+    "pydantic>=2.0.0",
+    "pytest>=8.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dharshini/axiom-sql-textgrad"
+Paper = "https://github.com/dharshini/axiom-sql-textgrad/blob/main/paper/PAPER.md"

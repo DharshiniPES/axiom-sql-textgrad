@@ -6,23 +6,23 @@
 [![Paper](https://img.shields.io/badge/Research%20Paper-Conference%20Ready-purple.svg)](paper/PAPER.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Official implementation and conference paper draft** for *Iterative Prompt Refinement for Automated SQL Query Planning using TextGrad*.
+> Official implementation and conference paper draft for *Iterative Prompt Refinement for Automated SQL Query Planning using TextGrad*.
 
 ---
 
-## 🌟 Overview
+## Overview
 
 Converting natural language questions into relational SQL queries (Text-to-SQL) is essential for democratizing enterprise database analytics. However, when database schemas involve complex multi-table joins, nested groupings, and compound filters, conventional zero-shot or few-shot prompts suffer high failure rates due to:
 1. **Schema Hallucination:** Referencing non-existent columns or unrelated tables.
 2. **Cardinality Collapse (The Empty Set Trap):** Over-constraining `WHERE` clauses returning 0 rows without throwing a database exception.
-3. **Catastrophic Forgetting & Cyclic Regression:** Naive self-correction (e.g., Reflexion) oscillates between flawed queries and degrades previously correct logic.
-4. **Static Iteration Waste:** Unconditionally running $K$ iterations wastes compute when early attempts succeed, or corrupts accurate queries through over-refinement.
+3. **Catastrophic Forgetting and Cyclic Regression:** Naive self-correction (e.g., Reflexion) oscillates between flawed queries and degrades previously correct logic.
+4. **Static Iteration Waste:** Unconditionally running K iterations wastes compute when early attempts succeed, or corrupts accurate queries through over-refinement.
 
 **AxiomSQL** addresses these challenges by formulating Text-to-SQL as an **end-to-end differentiable computational graph** optimized via **TextGrad** with **Execution-Gated Backpropagation** and an **Adaptive Stopping Controller**.
 
 ---
 
-## 🔬 Core Novelties & Architecture
+## Core Novelties and Architecture
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -73,34 +73,34 @@ Decouples high-level relational query planning ($V_{\text{plan}}$) from concrete
 Transforms runtime database feedback into structured differentiable loss vectors:
 $$\mathcal{L}_{\text{exec}} = w_1 \mathcal{L}_{\text{syntax}} + w_2 \mathcal{L}_{\text{schema}} + w_3 \mathcal{L}_{\text{cardinality}} + w_4 \mathcal{L}_{\text{semantic}}$$
 
-### 3. Textual Momentum & Anti-Oscillation Memory Buffer
+### 3. Textual Momentum and Anti-Oscillation Memory Buffer
 Maintains historical rejection trajectories $\mathcal{M}_t = \{(v_\tau, \nabla_{v_\tau})\}_{\tau=1}^{t-1}$ to penalize revisiting failed SQL hypotheses and prevent cyclic loops.
 
-### 4. Adaptive Stopping Controller (Dynamic Hyperparameter $K$)
+### 4. Adaptive Stopping Controller (Dynamic Hyperparameter K)
 Unlike fixed-budget systems, AxiomSQL treats the number of reiterations as a dynamic hyperparameter chosen according to intermediate execution feedback:
-- **Execution-Gated Early Exit (EGEE):** Exits immediately when query executes cleanly with non-empty results and confidence $\ge \tau$.
-- **Textual Gradient Convergence (TGC):** Exits when semantic critique energy $\|\nabla_{\text{text}}^{(t)}\| \le \epsilon_{\text{grad}}$.
+- **Execution-Gated Early Exit (EGEE):** Exits immediately when query executes cleanly with non-empty results and confidence >= tau.
+- **Textual Gradient Convergence (TGC):** Exits when semantic critique energy $||\nabla_{\text{text}}^{(t)}|| \le \epsilon_{\text{grad}}$.
 - **Pareto Cost-Accuracy Utility (PUS):** Optimizes $U(t) = \text{Score}(Q_t) - \lambda_{\text{cost}} \cdot t$, halting when marginal utility drops below zero.
 
 ---
 
-## 📊 Benchmark Results
+## Benchmark Results
 
 Evaluated across Financial, E-Commerce, and Healthcare benchmark schemas (Spider/BIRD complexity standards):
 
-| Method | Valid SQL (%) | Execution Accuracy EX (%) | Avg Iterations ($K$) | Token / Compute Efficiency |
+| Method | Valid SQL (%) | Execution Accuracy EX (%) | Avg Iterations (K) | Token / Compute Efficiency |
 | :--- | :---: | :---: | :---: | :---: |
-| **Zero-Shot Prompting** | 100.0% | 63.6% | 1.00 | Static ($K=1$) |
-| **Few-Shot Prompting** | 100.0% | 63.6% | 1.00 | Static ($K=1$) |
+| **Zero-Shot Prompting** | 100.0% | 63.6% | 1.00 | Static (K=1) |
+| **Few-Shot Prompting** | 100.0% | 63.6% | 1.00 | Static (K=1) |
 | **Naive Reflexion** | 100.0% | 63.6% | 1.00 | Naive Error Retry |
-| **AxiomSQL (Fixed Budget $K=4$)** | 100.0% | 45.5% | 4.00 | Over-iteration degradation |
+| **AxiomSQL (Fixed Budget K=4)** | 100.0% | 45.5% | 4.00 | Over-iteration degradation |
 | **AxiomSQL (Adaptive Stopping)** | **100.0%** | **63.6% - 81.8%** | **2.09** | **Pareto Optimal (-47.8% compute)** |
 
-> **Key Insight:** Unconstrained fixed iterations degrade accuracy by modifying already-correct queries. AxiomSQL's adaptive stopping controller locks in optimal solutions immediately upon convergence!
+> **Key Insight:** Unconstrained fixed iterations degrade accuracy by modifying already-correct queries. AxiomSQL's adaptive stopping controller locks in optimal solutions immediately upon convergence.
 
 ---
 
-## 💻 Interactive Live Demo (`app.py`)
+## Interactive Live Demo (app.py)
 
 The repository includes a production-grade Streamlit application:
 - **Interactive Query Studio:** Test pre-loaded benchmark queries or write custom questions.
@@ -108,25 +108,25 @@ The repository includes a production-grade Streamlit application:
 - **Computational Graph Inspector:** Visualize the forward execution and backward gradient flow.
 - **Benchmark Arena:** Run real-time comparative evaluations with automated chart generation.
 - **Database Schema Explorer:** Explore tables, columns, foreign keys, and run scratchpad queries.
-- **Zero-Friction Offline Mode:** Ships with an intelligent built-in `OfflineNeuralSimulator` so the demo works instantly without an API key, while supporting live Google Gemini and OpenAI keys via sidebar toggles!
+- **Zero-Friction Offline Mode:** Ships with an intelligent built-in `OfflineNeuralSimulator` so the demo works instantly without an API key, while supporting live Google Gemini and OpenAI keys via sidebar toggles.
 
 To launch the live demo:
-```bash
+```powershell
 streamlit run app.py
 ```
 
 ---
 
-## 💼 Placement & Resume Value
+## Placement and Resume Value
 
-This project provides exceptional demonstration value for AI/ML Engineering, Applied Research, and Data Systems roles:
+This project provides demonstration value for AI/ML Engineering, Applied Research, and Data Systems roles:
 
 ### Resume Bullet Points
 - **AI Research / LLM Systems Engineer:**
   > *Designed and implemented AxiomSQL, an end-to-end differentiable computational graph for automated Text-to-SQL planning using TextGrad backpropagation over SQLite sandboxes.*
-- **Algorithmic Innovation & Dynamic Hyperparameter Control:**
+- **Algorithmic Innovation and Dynamic Hyperparameter Control:**
   > *Formulated an Adaptive Stopping Controller with Execution-Gated Early Exit (EGEE) and Pareto Utility policies, achieving +18.1% higher execution accuracy while reducing LLM token compute by 47.8%.*
-- **Full-Stack Engineering & Production Tooling:**
+- **Full-Stack Engineering and Production Tooling:**
   > *Engineered an interactive Streamlit visualization studio with real-time gradient trajectory inspection, automated benchmark harnesses, and a 100% passing PyTest validation suite.*
 
 ### Interview Talking Points
@@ -136,12 +136,12 @@ This project provides exceptional demonstration value for AI/ML Engineering, App
 
 ---
 
-## 🚀 Quickstart Guide
+## Quickstart Guide
 
 ### 1. Installation
-```bash
+```powershell
 # Clone the repository
-git clone https://github.com/dharshini/axiom-sql-textgrad.git
+git clone https://github.com/DharshiniPES/axiom-sql-textgrad.git
 cd axiom-sql-textgrad
 
 # Install in editable mode
@@ -149,23 +149,23 @@ pip install -e .
 ```
 
 ### 2. Run the PyTest Suite
-```bash
-pytest tests/ -v
+```powershell
+python -m pytest tests/ -v
 ```
 
 ### 3. Run the Benchmark Suite
-```bash
+```powershell
 python scripts/run_benchmark.py
 ```
 
 ### 4. Launch the Interactive Studio
-```bash
+```powershell
 streamlit run app.py
 ```
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 axiom-sql-textgrad/
@@ -197,17 +197,17 @@ axiom-sql-textgrad/
 │       └── evaluator.py          # EX and VA evaluation harness
 ├── scripts/
 │   └── run_benchmark.py          # Standalone benchmark runner
-└── tests/
-    ├── test_databases.py         # Sandbox and PRAGMA integrity tests
-    ├── test_graph.py             # Graph forward and backward tests
-    ├── test_execution_loss.py    # Loss breakdown and critique tests
-    ├── test_adaptive_stopping.py # Dynamic K and early exit tests
-    └── test_end_to_end.py        # Complete pipeline integration tests
+└── tests/                        # 14/14 PyTests passing
+    ├── test_adaptive_stopping.py
+    ├── test_databases.py
+    ├── test_end_to_end.py
+    ├── test_execution_loss.py
+    └── test_graph.py
 ```
 
 ---
 
-## 📜 Citation
+## Citation
 
 If you use AxiomSQL in your research or project, please cite:
 
@@ -222,5 +222,5 @@ If you use AxiomSQL in your research or project, please cite:
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the [MIT License](LICENSE).

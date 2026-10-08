@@ -30,7 +30,6 @@ from axiomsql.utils.formatting import compute_text_diff, format_table_markdown
 # Page Configuration
 st.set_page_config(
     page_title="AxiomSQL: TextGrad SQL Planning with Adaptive Stopping",
-    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -66,7 +65,7 @@ st.markdown("""
 
 
 # Sidebar Configuration
-st.sidebar.title("⚡ AxiomSQL Engine")
+st.sidebar.title("AxiomSQL Engine")
 st.sidebar.caption("Execution-Gated Textual Gradient Optimization")
 
 # 1. Model Provider
@@ -104,7 +103,7 @@ if llm_instance is None:
 st.sidebar.divider()
 
 # 2. Hyperparameters & Adaptive Stopping
-st.sidebar.subheader("🎛️ Hyperparameters")
+st.sidebar.subheader("Hyperparameters")
 
 max_k = st.sidebar.slider(
     "Max Iterations Budget (K_max)",
@@ -168,11 +167,11 @@ st.markdown(
 
 # Tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🚀 Interactive Query Studio",
-    "📈 Trajectory & Gradient Flow",
-    "📊 Benchmark Arena",
-    "🗄️ Database & Schema Explorer",
-    "📜 Research Paper & Formulation",
+    "Interactive Query Studio",
+    "Trajectory and Gradient Flow",
+    "Benchmark Arena",
+    "Database and Schema Explorer",
+    "Research Paper and Formulation",
 ])
 
 
@@ -198,7 +197,7 @@ with tab1:
 
     with col_ctrl:
         st.markdown("<br>", unsafe_allow_html=True)
-        run_btn = st.button("🚀 Run AxiomSQL", type="primary", use_container_width=True)
+        run_btn = st.button("Run AxiomSQL", type="primary", use_container_width=True)
 
     if run_btn:
         with st.spinner("Executing TextGrad computational graph and iterative backpropagation..."):
@@ -234,7 +233,7 @@ with tab1:
         with m1:
             st.metric("Total Iterations", f"{res.total_iterations} / {max_k}")
         with m2:
-            st.metric("Final Execution Status", "Success ✅" if res.execution_result.success else "Failed ❌")
+            st.metric("Final Execution Status", "Success [OK]" if res.execution_result.success else "Failed [ERR]")
         with m3:
             st.metric("Rows Returned", res.execution_result.row_count)
         with m4:
@@ -246,11 +245,11 @@ with tab1:
         # Final Synthesized Query and Execution Result
         col_res1, col_res2 = st.columns([1, 1])
         with col_res1:
-            st.markdown("#### 📝 Final Synthesized SQL Query")
+            st.markdown("#### Final Synthesized SQL Query")
             st.code(res.final_sql, language="sql")
 
         with col_res2:
-            st.markdown("#### ⚡ Execution Result Set")
+            st.markdown("#### Execution Result Set")
             if res.execution_result.success:
                 if res.execution_result.data:
                     df_out = pd.DataFrame(res.execution_result.data, columns=res.execution_result.columns)
@@ -262,7 +261,7 @@ with tab1:
 
         # Iteration-by-Iteration Breakdown
         st.markdown("---")
-        st.markdown("### 🔄 Iterative Refinement Trajectory")
+        st.markdown("### Iterative Refinement Trajectory")
 
         for trace in res.history:
             with st.expander(f"Iteration {trace.iteration}: Loss = {trace.loss_output.scalar_loss:.2f} | Rows = {trace.execution_result.row_count} | Exit: {trace.exit_decision[:50]}..."):
@@ -287,7 +286,7 @@ with tab1:
 # TAB 2: TRAJECTORY & GRADIENT FLOW
 # ==============================================================================
 with tab2:
-    st.markdown("### 📈 TextGrad Computational Graph & Flow")
+    st.markdown("### TextGrad Computational Graph and Flow")
 
     st.markdown("""
 ```mermaid
@@ -308,11 +307,11 @@ graph TD
     if "latest_result" in st.session_state:
         res = st.session_state["latest_result"]
         if len(res.history) > 1:
-            st.markdown("#### 🔍 SQL Evolution Diff (Iteration 1 vs Final)")
+            st.markdown("#### SQL Evolution Diff (Iteration 1 vs Final)")
             diff = compute_text_diff(res.history[0].sql_value, res.final_sql)
             st.code(diff, language="diff")
 
-        st.markdown("#### 📉 Loss and Gradient Energy Trajectory")
+        st.markdown("#### Loss and Gradient Energy Trajectory")
         chart_data = pd.DataFrame({
             "Iteration": [t.iteration for t in res.history],
             "Scalar Loss": [t.loss_output.scalar_loss for t in res.history],
@@ -327,10 +326,10 @@ graph TD
 # TAB 3: BENCHMARK ARENA
 # ==============================================================================
 with tab3:
-    st.markdown("### 📊 Benchmark Arena & Empirical Comparison")
+    st.markdown("### Benchmark Arena and Empirical Comparison")
     st.markdown("Compare **AxiomSQL** against standard **Zero-Shot**, **Few-Shot**, and **Naive Reflexion** across the test suite.")
 
-    if st.button("▶️ Run Full Benchmark Evaluation", type="secondary"):
+    if st.button("Run Full Benchmark Evaluation", type="secondary"):
         with st.spinner("Running comparative evaluation across all benchmark queries..."):
             evaluator = BenchmarkEvaluator(llm=llm_instance)
             df_eval = evaluator.evaluate_all(max_iterations=max_k, stopping_strategy=selected_strategy)
@@ -340,13 +339,13 @@ with tab3:
             st.session_state["bench_raw"] = df_eval
 
     if "bench_summary" in st.session_state:
-        st.markdown("#### 🏆 Overall Benchmark Leaderboard")
+        st.markdown("#### Overall Benchmark Leaderboard")
         st.dataframe(st.session_state["bench_summary"], use_container_width=True)
 
-        st.markdown("#### 📈 Execution Accuracy (EX) Comparison")
+        st.markdown("#### Execution Accuracy (EX) Comparison")
         st.bar_chart(st.session_state["bench_summary"].set_index("Method")["Exec Accuracy EX (%)"])
 
-        st.markdown("#### ⏱️ Iteration Efficiency (Avg K)")
+        st.markdown("#### Iteration Efficiency (Avg K)")
         st.bar_chart(st.session_state["bench_summary"].set_index("Method")["Avg Iterations (K)"])
 
 
@@ -354,12 +353,12 @@ with tab3:
 # TAB 4: DATABASE & SCHEMA EXPLORER
 # ==============================================================================
 with tab4:
-    st.markdown(f"### 🗄️ Relational Database Schema Explorer: `{selected_db_id.upper()}`")
+    st.markdown(f"### Relational Database Schema Explorer: `{selected_db_id.upper()}`")
     sb_exp = create_benchmark_sandbox(selected_db_id)
     schema_dict = sb_exp.get_schema_dict()
 
     for table_name, t_info in schema_dict.items():
-        with st.expander(f"📁 Table: `{table_name}` ({len(t_info['columns'])} columns)"):
+        with st.expander(f"Table: `{table_name}` ({len(t_info['columns'])} columns)"):
             cols_df = pd.DataFrame([
                 {"Column": c, "Type": d["type"], "Primary Key": d["pk"]}
                 for c, d in t_info["columns"].items()
@@ -368,10 +367,10 @@ with tab4:
             if t_info["foreign_keys"]:
                 st.write("**Foreign Keys:**")
                 for fk in t_info["foreign_keys"]:
-                    st.write(f"- `{fk['from']}` ➔ `{fk['to_table']}.{fk['to_col']}`")
+                    st.write(f"- `{fk['from']}` -> `{fk['to_table']}.{fk['to_col']}`")
 
     st.markdown("---")
-    st.markdown("#### 🧪 Interactive SQL Scratchpad")
+    st.markdown("#### Interactive SQL Scratchpad")
     raw_query = st.text_input("Run direct SQL query against active database:", value=f"SELECT * FROM {list(schema_dict.keys())[0]} LIMIT 5;")
     if st.button("Execute Scratchpad Query"):
         res_scratch = sb_exp.execute_query(raw_query)
@@ -389,16 +388,16 @@ with tab5:
 # Iterative Prompt Refinement for Automated SQL Query Planning using TextGrad
 **Authors:** Dharshini et al.  
 **Abstract:**  
-Large Language Models (LLMs) have demonstrated strong capabilities in converting natural-language questions into SQL queries. However, their reliability degrades on complex schemas with multi-table joins and compound predicates. Conventional zero-shot and few-shot prompting lack systematic learning mechanisms from execution failures. We propose **AxiomSQL**, an execution-driven framework formulating Text-to-SQL synthesis as a differentiable computational graph optimized via **TextGrad** with an **Adaptive Iteration Controller**. Database runtime outputs (syntax errors, cardinality anomalies, schema grounding violations) are transformed into structured multi-objective loss vectors, backpropagated as textual gradients through a two-stage computational graph (Query Planning $\to$ SQL Synthesis). Crucially, the iteration count $K$ is governed dynamically by an adaptive stopping policy that balances confidence, gradient energy, and compute costs, eliminating redundant iterations and preventing cyclic regression.
+Large Language Models (LLMs) have demonstrated strong capabilities in converting natural-language questions into SQL queries. However, their reliability degrades on complex schemas with multi-table joins and compound predicates. Conventional zero-shot and few-shot prompting lack systematic learning mechanisms from execution failures. We propose **AxiomSQL**, an execution-driven framework formulating Text-to-SQL synthesis as a differentiable computational graph optimized via **TextGrad** with an **Adaptive Iteration Controller**. Database runtime outputs (syntax errors, cardinality anomalies, schema grounding violations) are transformed into structured multi-objective loss vectors, backpropagated as textual gradients through a two-stage computational graph (Query Planning -> SQL Synthesis). Crucially, the iteration count $K$ is governed dynamically by an adaptive stopping policy that balances confidence, gradient energy, and compute costs, eliminating redundant iterations and preventing cyclic regression.
 
 ### Mathematical Formulation
 1. **Computational Graph:**
-   $$\mathcal{G} = (V_{\text{nl}}, V_{\text{schema}}, V_{\text{plan}}, V_{\text{sql}})$$
+   $$\\mathcal{G} = (V_{\\text{nl}}, V_{\\text{schema}}, V_{\\text{plan}}, V_{\\text{sql}})$$
 2. **Multi-Objective Execution Loss:**
-   $$\mathcal{L}_{\text{exec}} = w_1 \mathcal{L}_{\text{syntax}} + w_2 \mathcal{L}_{\text{schema}} + w_3 \mathcal{L}_{\text{cardinality}} + w_4 \mathcal{L}_{\text{semantic}}$$
+   $$\\mathcal{L}_{\\text{exec}} = w_1 \\mathcal{L}_{\\text{syntax}} + w_2 \\mathcal{L}_{\\text{schema}} + w_3 \\mathcal{L}_{\\text{cardinality}} + w_4 \\mathcal{L}_{\\text{semantic}}$$
 3. **Upstream Textual Gradient Backpropagation:**
-   $$\nabla_{V_{\text{sql}}} \mathcal{L}_{\text{exec}} = \text{CriticLLM}(V_{\text{sql}}, \mathcal{L}_{\text{exec}})$$
-   $$\nabla_{V_{\text{plan}}} \mathcal{L}_{\text{exec}} = \text{CriticLLM}(V_{\text{plan}}, V_{\text{sql}}, \nabla_{V_{\text{sql}}} \mathcal{L}_{\text{exec}})$$
+   $$\\nabla_{V_{\\text{sql}}} \\mathcal{L}_{\\text{exec}} = \\text{CriticLLM}(V_{\\text{sql}}, \\mathcal{L}_{\\text{exec}})$$
+   $$\\nabla_{V_{\\text{plan}}} \\mathcal{L}_{\\text{exec}} = \\text{CriticLLM}(V_{\\text{plan}}, V_{\\text{sql}}, \\nabla_{V_{\\text{sql}}} \\mathcal{L}_{\\text{exec}})$$
 4. **Adaptive Stopping Rule:**
-   $$\pi_{\text{exit}}(s_t) = \mathbb{I}\left( \text{Success}(Q_t) \land \|\nabla_{\text{text}}^{(t)}\| \le \epsilon \lor U(t) \ge \tau \right)$$
+   $$\\pi_{\\text{exit}}(s_t) = \\mathbb{I}\\left( \\text{Success}(Q_t) \\land \\|\\nabla_{\\text{text}}^{(t)}\\| \\le \\epsilon \\lor U(t) \\ge \\tau \\right)$$
 """)

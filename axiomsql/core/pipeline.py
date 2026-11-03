@@ -28,10 +28,12 @@ class PipelineConfig:
     cost_penalty_lambda: float = 0.08
     learning_rate: str = "moderate"
     enable_momentum: bool = True
-    weight_syntax: float = 0.40
-    weight_schema: float = 0.25
+    weight_syntax: float = 0.35
+    weight_schema: float = 0.20
     weight_cardinality: float = 0.15
     weight_semantic: float = 0.20
+    weight_plan_cost: float = 0.05
+    weight_ast_cycle: float = 0.05
 
 
 @dataclass
@@ -76,6 +78,8 @@ class AxiomSQLPipeline:
             weight_schema=self.config.weight_schema,
             weight_cardinality=self.config.weight_cardinality,
             weight_semantic=self.config.weight_semantic,
+            weight_plan_cost=self.config.weight_plan_cost,
+            weight_ast_cycle=self.config.weight_ast_cycle,
         )
 
     def run(

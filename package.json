@@ -1,0 +1,23 @@
+{
+  "name": "axiomsql-studio",
+  "version": "1.0.0",
+  "description": "AxiomSQL Enterprise Studio - Adaptive Textual Gradient Optimization with Dynamic Execution Feedback for Multi-Stage SQL Planning",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "textgrad",
+    "text-to-sql",
+    "llm",
+    "query-planning",
+    "relational-databases",
+    "adaptive-stopping"
+  ],
+  "author": "Dharshini",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

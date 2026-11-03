@@ -24,20 +24,24 @@ class ExecutionLossOutput:
 class ExecutionLoss:
     """
     Computes differentiable multi-objective execution loss:
-    L_exec = w_syntax * L_syntax + w_schema * L_schema + w_card * L_cardinality + w_sem * L_semantic
+    L_exec = w_syntax * L_syntax + w_schema * L_schema + w_card * L_cardinality + w_sem * L_semantic + w_cost * L_cost + w_ast * L_ast
     """
 
     def __init__(
         self,
-        weight_syntax: float = 0.40,
-        weight_schema: float = 0.25,
+        weight_syntax: float = 0.35,
+        weight_schema: float = 0.20,
         weight_cardinality: float = 0.15,
         weight_semantic: float = 0.20,
+        weight_plan_cost: float = 0.05,
+        weight_ast_cycle: float = 0.05,
     ):
         self.w_syntax = weight_syntax
         self.w_schema = weight_schema
         self.w_cardinality = weight_cardinality
         self.w_semantic = weight_semantic
+        self.w_plan_cost = weight_plan_cost
+        self.w_ast_cycle = weight_ast_cycle
 
     def compute(
         self,
@@ -89,12 +93,36 @@ class ExecutionLoss:
             # Unsupervised execution mode: confidence derived from successful non-empty retrieval
             loss_components["semantic"] = 0.0 if (pred_result.success and pred_result.row_count > 0) else 0.5
 
+        # 5. Novelty Factor: Execution-Plan Grounded Scan Cost Loss
+        scan_penalties = 0
+        btree_penalties = 0
+        for p in getattr(pred_result, "plan_details", []):
+            detail_str = str(p.get("detail", "")).upper()
+            if "SCAN TABLE" in detail_str or "SCAN SUBQUERY" in detail_str:
+                scan_penalties += 1
+            if "USE TEMP B-TREE" in detail_str:
+                btree_penalties += 1
+        loss_components["plan_cost"] = min(1.0, 0.25 * scan_penalties + 0.15 * btree_penalties)
+
+        # 6. Novelty Factor: AST Cycle & Cross-Product Redundancy Penalty
+        query_lower = pred_result.query.lower()
+        if "from" in query_lower:
+            from_clause = query_lower.split("from")[-1].split("where")[0].split("group")[0]
+            if "," in from_clause and "join" not in query_lower:
+                loss_components["ast_cycle"] = 0.5
+            else:
+                loss_components["ast_cycle"] = 0.0
+        else:
+            loss_components["ast_cycle"] = 0.0
+
         # Weighted aggregate scalar loss
         scalar_loss = (
             self.w_syntax * loss_components["syntax"]
             + self.w_schema * loss_components["schema"]
             + self.w_cardinality * loss_components["cardinality"]
             + self.w_semantic * loss_components["semantic"]
+            + self.w_plan_cost * loss_components["plan_cost"]
+            + self.w_ast_cycle * loss_components["ast_cycle"]
         )
         scalar_loss = min(1.0, max(0.0, scalar_loss))
 
@@ -148,6 +176,11 @@ class ExecutionLoss:
             if pred_result.success and not SQLParser.compare_execution_results(pred_result.data, gold_result.data):
                 lines.append(f"DISCREPANCY DETECTED: Expected {gold_result.row_count} rows, but candidate query yielded {pred_result.row_count} rows.")
                 lines.append(f"Expected Sample Rows: {gold_result.data[:2]}")
+
+        if loss_components.get("plan_cost", 0.0) > 0.2:
+            lines.append("EXECUTION PLAN WARNING: Query triggers unindexed full-table scans or temporary B-Tree structures. Optimize join keys and indexed column lookups.")
+        if loss_components.get("ast_cycle", 0.0) > 0.0:
+            lines.append("AST STRUCTURE WARNING: Comma-separated product detected in FROM clause. Use explicit JOIN syntax with ON predicates.")
 
         lines.append(f"Loss Scalar: {sum(loss_components.values()):.2f} (Error Category: {error_category})")
         return "\n".join(lines)

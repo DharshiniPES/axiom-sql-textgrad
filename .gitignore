@@ -29,3 +29,6 @@ ENV/
 *.db
 *.sqlite3
 .streamlit/secrets.toml
+node_modules/
+npm-debug.log*
+.DS_Store

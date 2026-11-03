@@ -18,6 +18,7 @@ class ExecutionResult:
     row_count: int = 0
     error_message: Optional[str] = None
     execution_time_ms: float = 0.0
+    plan_details: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
     def is_empty(self) -> bool:
@@ -64,6 +65,21 @@ class DatabaseSandbox:
             data = [tuple(row) for row in rows]
             duration_ms = (time.perf_counter() - start_time) * 1000.0
 
+            # Novelty Factor: Execution-Plan Grounded Cost Telemetry
+            plan_details = []
+            try:
+                plan_cursor = self._conn.cursor()
+                plan_cursor.execute(f"EXPLAIN QUERY PLAN {clean_query}")
+                p_rows = plan_cursor.fetchall()
+                for pr in p_rows:
+                    plan_details.append({
+                        "id": pr[0] if len(pr) > 0 else 0,
+                        "parent": pr[1] if len(pr) > 1 else 0,
+                        "detail": pr[3] if len(pr) > 3 else str(pr)
+                    })
+            except Exception:
+                pass
+
             return ExecutionResult(
                 query=query,
                 success=True,
@@ -72,6 +88,7 @@ class DatabaseSandbox:
                 row_count=len(data),
                 error_message=None,
                 execution_time_ms=round(duration_ms, 3),
+                plan_details=plan_details,
             )
         except sqlite3.Error as e:
             duration_ms = (time.perf_counter() - start_time) * 1000.0

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AxiomSQL: Differentiable Text-to-SQL Studio</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js for trajectory and benchmark visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Navigation Header -->
+    <header class="top-nav">
+      <div class="nav-brand">
+        <span class="brand-title">AXIOMSQL</span>
+        <span class="brand-subtitle">Differentiable Text-to-SQL via TextGrad & Adaptive Stopping</span>
+      </div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="tab-studio">Query Studio</button>
+        <button class="nav-tab" data-tab="tab-graph">Computational Graph</button>
+        <button class="nav-tab" data-tab="tab-benchmark">Benchmark Arena</button>
+        <button class="nav-tab" data-tab="tab-schema">Database & Schema</button>
+        <button class="nav-tab" data-tab="tab-research">Research & Formulation</button>
+      </div>
+      <div class="nav-status">
+        <span class="status-indicator"></span>
+        <span class="status-text">SQLite Sandboxed Engine</span>
+      </div>
+    </header>
+
+    <div class="main-container">
+      <!-- Left Configuration Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <label class="section-label">RELATIONAL DOMAIN</label>
+          <select id="dbSelect" class="form-control">
+            <option value="financial">Financial Banking System</option>
+            <option value="ecommerce">E-Commerce & Supply Chain</option>
+            <option value="healthcare">Healthcare & Hospital</option>
+          </select>
+        </div>
+
+        <div class="sidebar-section">
+          <label class="section-label">INFERENCE BACKEND</label>
+          <select id="backendSelect" class="form-control">
+            <option value="offline">Offline Neural Simulator (Deterministic)</option>
+            <option value="gemini">Google Gemini API</option>
+            <option value="openai">OpenAI GPT-4o-mini</option>
+          </select>
+          <div id="apiKeyGroup" class="form-group" style="display: none; margin-top: 8px;">
+            <label class="field-label">API Key</label>
+            <input type="password" id="apiKeyInput" class="form-control" placeholder="Enter API Key">
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <label class="section-label">HYPERPARAMETERS</label>
+          
+          <div class="form-group">
+            <div class="slider-header">
+              <label class="field-label">Max Iterations (K_max)</label>
+              <span id="maxKVal" class="slider-badge">4</span>
+            </div>
+            <input type="range" id="maxKInput" min="1" max="8" value="4" class="slider-control">
+          </div>
+
+          <div class="form-group">
+            <label class="field-label">Adaptive Stopping Policy</label>
+            <select id="stoppingStrategySelect" class="form-control">
+              <option value="execution_gated">Execution-Gated Early Exit (EGEE)</option>
+              <option value="gradient_convergence">Gradient Convergence (TGC)</option>
+              <option value="pareto_utility">Pareto Cost Utility (PUS)</option>
+              <option value="fixed_budget">Fixed Budget (Exhaust K_max)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="slider-header">
+              <label class="field-label">Confidence Threshold (tau)</label>
+              <span id="tauVal" class="slider-badge">0.85</span>
+            </div>
+            <input type="range" id="tauInput" min="0.5" max="1.0" step="0.05" value="0.85" class="slider-control">
+          </div>
+
+          <div class="form-group">
+            <label class="field-label">Optimizer Learning Rate</label>
+            <select id="learningRateSelect" class="form-control">
+              <option value="conservative">Conservative (eta = 0.2)</option>
+              <option value="moderate" selected>Moderate (eta = 0.4)</option>
+              <option value="aggressive">Aggressive (eta = 0.7)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="slider-header">
+              <label class="field-label">EXPLAIN Cost Penalty (Novelty Factor)</label>
+              <span id="costWeightVal" class="slider-badge">0.05</span>
+            </div>
+            <input type="range" id="costWeightInput" min="0.0" max="0.2" step="0.02" value="0.05" class="slider-control">
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="momentumCheckbox" checked>
+            <label for="momentumCheckbox">Anti-Oscillation Momentum Memory</label>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="system-meta">
+            <div>Framework: AxiomSQL Core v0.2.0</div>
+            <div>Runtime: Node.js + Python 3.11</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content Views -->
+      <main class="content-area">
+        
+        <!-- TAB 1: QUERY STUDIO -->
+        <section id="tab-studio" class="tab-view active">
+          <div class="studio-header-card">
+            <div class="input-row">
+              <div class="input-col-main">
+                <label class="field-label">Benchmark Query Preset or Custom Question</label>
+                <select id="presetQuerySelect" class="form-control query-selector">
+                  <option value="">Loading benchmark suite...</option>
+                </select>
+                <textarea id="questionInput" class="form-control question-textarea" placeholder="Enter natural language database inquiry..."></textarea>
+              </div>
+              <div class="input-col-actions">
+                <button id="runBtn" class="btn btn-primary btn-large">Run AxiomSQL Optimization</button>
+                <div class="meta-tag" id="queryDifficultyTag">Difficulty: Medium</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading Indicator -->
+          <div id="loadingIndicator" class="loading-panel" style="display: none;">
+            <div class="spinner"></div>
+            <div class="loading-text">Executing TextGrad Computational Graph and Adaptive Backpropagation...</div>
+          </div>
+
+          <!-- Results Section -->
+          <div id="resultsContainer" style="display: none;">
+            <!-- Telemetry Bar -->
+            <div class="telemetry-bar">
+              <div class="telemetry-card">
+                <div class="telemetry-label">Iterations Used</div>
+                <div class="telemetry-value" id="resIterCount">-- / --</div>
+              </div>
+              <div class="telemetry-card">
+                <div class="telemetry-label">Execution Status</div>
+                <div class="telemetry-value" id="resStatus">--</div>
+              </div>
+              <div class="telemetry-card">
+                <div class="telemetry-label">Rows Returned</div>
+                <div class="telemetry-value" id="resRowCount">--</div>
+              </div>
+              <div class="telemetry-card">
+                <div class="telemetry-label">Execution Latency</div>
+                <div class="telemetry-value" id="resLatency">-- ms</div>
+              </div>
+              <div class="telemetry-card">
+                <div class="telemetry-label">Stopping Policy</div>
+                <div class="telemetry-value" id="resPolicy">--</div>
+              </div>
+            </div>
+
+            <!-- Rationale Callout -->
+            <div class="callout-card" id="stoppingReasonCard">
+              <div class="callout-title">Adaptive Stopping Controller Decision</div>
+              <div class="callout-body" id="stoppingReasonText">--</div>
+            </div>
+
+            <!-- Output Columns: SQL & Results Table -->
+            <div class="dual-grid">
+              <div class="panel-card">
+                <div class="panel-header">
+                  <span>Synthesized Executable SQL Query</span>
+                  <button id="copySqlBtn" class="btn btn-sm btn-secondary">Copy SQL</button>
+                </div>
+                <div class="code-container">
+                  <pre><code id="finalSqlCode">--</code></pre>
+                </div>
+
+                <!-- EXPLAIN Query Plan (Novelty Factor) -->
+                <div class="explain-panel">
+                  <div class="panel-subhead">EXPLAIN QUERY PLAN Telemetry (Plan-Cost Optimizer)</div>
+                  <div id="explainPlanContainer" class="explain-list"></div>
+                </div>
+              </div>
+
+              <div class="panel-card">
+                <div class="panel-header">
+                  <span>Relational Database Execution Result</span>
+                  <span id="resultMetaBadge" class="badge">-- rows</span>
+                </div>
+                <div id="tableContainer" class="table-scroll">
+                  <table class="data-table" id="outputTable">
+                    <thead><tr id="outputTableHead"></tr></thead>
+                    <tbody id="outputTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step by Step Trajectory Accordion -->
+            <div class="trajectory-section">
+              <div class="section-title">Iterative Refinement Trajectory & Textual Gradient Feedback</div>
+              <div id="trajectoryAccordion" class="accordion-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: COMPUTATIONAL GRAPH & TRAJECTORY -->
+        <section id="tab-graph" class="tab-view">
+          <div class="panel-card">
+            <div class="panel-header">
+              <span>Two-Stage Differentiable Computational Graph</span>
+            </div>
+            <div class="dag-visual-container">
+              <div class="dag-node leaf-node">
+                <div class="node-type">LEAF (INPUT)</div>
+                <div class="node-title">V_nl: Natural Language Question</div>
+                <div class="node-desc">User semantic intent specification</div>
+              </div>
+              <div class="dag-arrow-down">&darr;</div>
+              <div class="dag-node leaf-node">
+                <div class="node-type">LEAF (INPUT)</div>
+                <div class="node-title">V_schema: Relational Catalog</div>
+                <div class="node-desc">Tables, attributes, types, foreign keys</div>
+              </div>
+              <div class="dag-arrow-down">&darr; Forward Pass</div>
+              <div class="dag-node trainable-node">
+                <div class="node-type">STAGE 1: TRAINABLE</div>
+                <div class="node-title">V_plan: Schema-Linking Query Plan</div>
+                <div class="node-desc">Join path topology & aggregate projections</div>
+              </div>
+              <div class="dag-arrow-down">&darr; Forward Pass</div>
+              <div class="dag-node trainable-node">
+                <div class="node-type">STAGE 2: TRAINABLE</div>
+                <div class="node-title">V_sql: Concrete SQL Synthesizer</div>
+                <div class="node-desc">Dialect-compliant executable query code</div>
+              </div>
+              <div class="dag-arrow-down">&darr; Sandboxed Execution</div>
+              <div class="dag-node engine-node">
+                <div class="node-type">EXECUTION ENGINE</div>
+                <div class="node-title">Relational Database Sandbox</div>
+                <div class="node-desc">SQLite engine & EXPLAIN query plan telemetry</div>
+              </div>
+              <div class="dag-arrow-down">&darr; Objective Evaluation</div>
+              <div class="dag-node loss-node">
+                <div class="node-type">LOSS FUNCTION</div>
+                <div class="node-title">Multi-Objective Execution Loss (L_exec)</div>
+                <div class="node-desc">Syntax + Schema + Cardinality + Cost + Semantic</div>
+              </div>
+              <div class="dag-arrow-up">&uarr; Backward TextGrad Flow (&nabla;L)</div>
+            </div>
+          </div>
+
+          <div class="dual-grid" style="margin-top: 16px;">
+            <div class="panel-card">
+              <div class="panel-header">
+                <span>Loss & Gradient Energy Convergence Curve</span>
+              </div>
+              <div class="chart-box">
+                <canvas id="lossChart"></canvas>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <div class="panel-header">
+                <span>SQL Evolution Diff (Initial Attempt vs Final Refinement)</span>
+              </div>
+              <div class="code-container">
+                <pre><code id="diffViewerCode">// Run a query in Studio to inspect SQL mutations</code></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: BENCHMARK ARENA -->
+        <section id="tab-benchmark" class="tab-view">
+          <div class="panel-card">
+            <div class="panel-header">
+              <span>Empirical Benchmark Leaderboard</span>
+              <button id="runBenchmarkBtn" class="btn btn-secondary">Run Full Benchmark Evaluation</button>
+            </div>
+            <div class="benchmark-desc">
+              Evaluates Execution Accuracy (EX %), Valid SQL Rate (VA %), and Average Iteration Compute (K) across 11 benchmark queries from Spider/BIRD distributions.
+            </div>
+
+            <div id="benchmarkLoading" class="loading-panel" style="display: none; margin: 16px 0;">
+              <div class="spinner"></div>
+              <div class="loading-text">Evaluating Zero-Shot, Few-Shot, Naive Reflexion, and AxiomSQL across all schemas...</div>
+            </div>
+
+            <div class="table-scroll" style="margin-top: 16px;">
+              <table class="data-table" id="benchmarkTable">
+                <thead>
+                  <tr>
+                    <th>Method</th>
+                    <th>Valid SQL (%)</th>
+                    <th>Execution Accuracy EX (%)</th>
+                    <th>Avg Iterations (K)</th>
+                    <th>Avg Latency (ms)</th>
+                    <th>Efficiency Profile</th>
+                  </tr>
+                </thead>
+                <tbody id="benchmarkTableBody">
+                  <tr>
+                    <td><strong>AxiomSQL (Ours - Adaptive)</strong></td>
+                    <td>100.0%</td>
+                    <td>63.6% - 81.8%</td>
+                    <td>2.09</td>
+                    <td>0.45 ms</td>
+                    <td>Pareto Optimal (-47.8% compute)</td>
+                  </tr>
+                  <tr>
+                    <td>Few-Shot Prompting</td>
+                    <td>100.0%</td>
+                    <td>63.6%</td>
+                    <td>1.00</td>
+                    <td>0.09 ms</td>
+                    <td>Static (No self-correction)</td>
+                  </tr>
+                  <tr>
+                    <td>Zero-Shot Prompting</td>
+                    <td>100.0%</td>
+                    <td>63.6%</td>
+                    <td>1.00</td>
+                    <td>0.09 ms</td>
+                    <td>Static (No error recovery)</td>
+                  </tr>
+                  <tr>
+                    <td>Naive Reflexion</td>
+                    <td>100.0%</td>
+                    <td>63.6%</td>
+                    <td>1.00</td>
+                    <td>0.10 ms</td>
+                    <td>Prone to cyclic oscillations</td>
+                  </tr>
+                  <tr>
+                    <td>AxiomSQL (Fixed Budget K=4)</td>
+                    <td>100.0%</td>
+                    <td>45.5%</td>
+                    <td>4.00</td>
+                    <td>1.00 ms</td>
+                    <td>Over-iteration degradation (-18.1%)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="dual-grid" style="margin-top: 20px;">
+              <div class="panel-card">
+                <div class="panel-header"><span>Execution Accuracy Comparison (EX %)</span></div>
+                <div class="chart-box"><canvas id="benchmarkAccuracyChart"></canvas></div>
+              </div>
+              <div class="panel-card">
+                <div class="panel-header"><span>Compute Expenditure (Avg Iterations K)</span></div>
+                <div class="chart-box"><canvas id="benchmarkIterationsChart"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 4: DATABASE & SCHEMA EXPLORER -->
+        <section id="tab-schema" class="tab-view">
+          <div class="dual-grid">
+            <div class="panel-card">
+              <div class="panel-header">
+                <span>Relational Schema Inspector</span>
+                <span id="activeSchemaBadge" class="badge">FINANCIAL</span>
+              </div>
+              <div id="schemaTreeContainer" class="schema-tree"></div>
+            </div>
+
+            <div class="panel-card">
+              <div class="panel-header">
+                <span>Interactive SQL Sandbox Scratchpad</span>
+                <button id="runScratchpadBtn" class="btn btn-sm btn-primary">Execute SQL</button>
+              </div>
+              <div class="form-group" style="margin-top: 10px;">
+                <textarea id="scratchpadInput" class="form-control scratchpad-area">SELECT * FROM customers LIMIT 5;</textarea>
+              </div>
+              <div class="panel-header" style="margin-top: 12px;"><span>Scratchpad Output</span></div>
+              <div id="scratchpadResultContainer" class="table-scroll">
+                <table class="data-table" id="scratchpadTable">
+                  <thead><tr id="scratchpadTableHead"></tr></thead>
+                  <tbody id="scratchpadTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 5: RESEARCH & FORMULATION -->
+        <section id="tab-research" class="tab-view">
+          <div class="panel-card">
+            <div class="panel-header">
+              <span>AxiomSQL Academic Research Formulation & Novelty Factors</span>
+            </div>
+            <div class="research-content">
+              <h3>Abstract</h3>
+              <p>
+                Large Language Models (LLMs) exhibit notable capabilities in converting natural-language specifications into SQL queries. However, their reliability decreases on complex schemas with multi-table joins, nested groupings, and domain constraints. We propose <strong>AxiomSQL</strong>, an execution-driven framework formulating Text-to-SQL as an end-to-end differentiable computational graph optimized via <strong>TextGrad</strong> with an <strong>Adaptive Stopping Controller</strong>.
+              </p>
+
+              <h3>Novelty Growth Factors (G-Factors)</h3>
+              <ol>
+                <li>
+                  <strong>Two-Stage Differentiable Computational Graph:</strong>
+                  Decouples high-level relational query planning (V_plan) from dialect-compliant SQL synthesis (V_sql). Runtime execution errors backpropagate upstream from concrete syntax to high-level relational topology.
+                </li>
+                <li>
+                  <strong>EXPLAIN-Grounded Plan-Cost Optimization (L_cost):</strong>
+                  Incorporates database query engine execution plans (EXPLAIN QUERY PLAN) into the objective function, penalizing unindexed table scans (SCAN TABLE) and temporary B-Trees to yield performant, index-friendly queries.
+                </li>
+                <li>
+                  <strong>Empty-Set Trap Cardinality Regularization (L_card):</strong>
+                  Identifies queries that run without syntax errors but return zero rows on populated databases due to over-constrained WHERE predicates.
+                </li>
+                <li>
+                  <strong>Adaptive Stopping Controller (Dynamic Hyperparameter K):</strong>
+                  Eliminates the "Over-Iteration Degradation" phenomenon where fixed iteration counts corrupt already-correct queries. Evaluates Execution-Gated Early Exit (EGEE), Textual Gradient Convergence (TGC), and Pareto Cost Utility (PUS).
+                </li>
+                <li>
+                  <strong>Anti-Oscillation Momentum Memory Buffer:</strong>
+                  Penalizes cyclic exploration of previously rejected SQL hypotheses.
+                </li>
+              </ol>
+
+              <h3>Mathematical Formulation</h3>
+              <div class="math-block">
+                $$\mathcal{G} = (V_{\text{nl}}, V_{\text{schema}}, V_{\text{plan}}, V_{\text{sql}})$$<br>
+                $$\vec{\mathcal{L}}_{\text{exec}} = \langle \mathcal{L}_{\text{syntax}}, \mathcal{L}_{\text{schema}}, \mathcal{L}_{\text{cardinality}}, \mathcal{L}_{\text{semantic}}, \mathcal{L}_{\text{cost}}, \mathcal{L}_{\text{ast}} \rangle$$<br>
+                $$\nabla_{V_{\text{sql}}} \mathcal{L}_{\text{exec}} = \text{CriticLLM}(V_{\text{sql}}, \mathcal{L}_{\text{exec}})$$<br>
+                $$\nabla_{V_{\text{plan}}} \mathcal{L}_{\text{exec}} = \text{CriticLLM}(V_{\text{plan}}, V_{\text{sql}}, \nabla_{V_{\text{sql}}} \mathcal{L}_{\text{exec}})$$<br>
+                $$\pi_{\text{exit}}(s_t) = \mathbb{I}\left( \text{Success}(Q_t) \land \|\nabla_{\text{text}}^{(t)}\| \le \epsilon \lor U(t) \ge \tau \right)$$
+              </div>
+
+              <h3>BibTeX Citation</h3>
+              <pre class="bibtex-box"><code>@article{dharshini2026axiomsql,
+  title={AxiomSQL: Adaptive Textual Gradient Optimization with Dynamic Execution Feedback for Multi-Stage SQL Planning},
+  author={Dharshini},
+  journal={Conference on Neural Information Processing Systems (NeurIPS) / ACM SIGMOD Draft},
+  year={2026}
+}</code></pre>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -35,10 +35,19 @@
         <div class="sidebar-section">
           <label class="section-label">RELATIONAL DOMAIN</label>
           <select id="dbSelect" class="form-control">
-            <option value="financial">Financial Banking System</option>
-            <option value="ecommerce">E-Commerce & Supply Chain</option>
-            <option value="healthcare">Healthcare & Hospital</option>
+            <option value="financial">Financial Banking System (Synthetic)</option>
+            <option value="ecommerce">E-Commerce & Supply Chain (Synthetic)</option>
+            <option value="healthcare">Healthcare & Hospital (Synthetic)</option>
+            <option value="california_schools">California Schools (BIRD Benchmark Real)</option>
+            <option value="world_bank">World Bank (Spider Benchmark Real)</option>
           </select>
+          <div style="margin-top: 8px;">
+            <input type="file" id="dbFileInput" accept=".sqlite,.db,.sql" style="display: none;">
+            <button id="uploadDbBtn" type="button" class="btn btn-secondary btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>Upload Custom DB (.sqlite, .db, .sql)</span>
+            </button>
+            <div id="uploadStatus" style="display: none; font-size: 0.72rem; margin-top: 6px; padding: 4px 8px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; word-break: break-all;"></div>
+          </div>
         </div>
 
         <div class="sidebar-section">

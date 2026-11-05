@@ -7,9 +7,38 @@ const express = require('express');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    cb(null, `db_${Date.now()}_${safeName}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.sqlite', '.db', '.sql'].includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .sqlite, .db, and .sql database files are supported.'));
+    }
+  }
+});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -82,6 +111,32 @@ app.get('/api/metadata', async (req, res) => {
   try {
     const data = await invokePythonBridge('get-metadata');
     res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/upload-database', upload.single('database'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No database file provided.' });
+    }
+    const uploadedPath = req.file.path;
+    const inspectResult = await invokePythonBridge('inspect-database', { db_path: uploadedPath });
+    if (inspectResult.error) {
+      return res.status(400).json({ error: inspectResult.error });
+    }
+
+    const dbId = 'custom_' + Date.now();
+    res.json({
+      success: true,
+      db_id: dbId,
+      name: `Custom DB (${req.file.originalname})`,
+      original_name: req.file.originalname,
+      db_path: inspectResult.db_path,
+      tables: inspectResult.tables,
+      schema_summary: inspectResult.schema_summary,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

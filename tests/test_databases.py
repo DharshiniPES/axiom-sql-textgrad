@@ -29,12 +29,24 @@ def test_database_sandbox_syntax_error():
 
 
 def test_benchmark_database_seeding():
-    for db_id in ["financial", "ecommerce", "healthcare"]:
+    for db_id in ["financial", "ecommerce", "healthcare", "california_schools", "world_bank"]:
         sb = create_benchmark_sandbox(db_id)
         schema = sb.get_schema_summary()
         assert len(schema) > 50
         assert "Table:" in schema
         sb.close()
+
+
+def test_custom_sqlite_inspection(tmp_path):
+    db_file = tmp_path / "research_test.sqlite"
+    sb = DatabaseSandbox(str(db_file))
+    sb._conn.execute("CREATE TABLE papers (paper_id INTEGER PRIMARY KEY, title TEXT, citations INTEGER);")
+    sb._conn.execute("INSERT INTO papers VALUES (1, 'TextGrad SQL', 42);")
+    sb._conn.commit()
+    schema_dict = sb.get_schema_dict()
+    assert "papers" in schema_dict
+    assert "citations" in schema_dict["papers"]["columns"]
+    sb.close()
 
 
 def test_adversarial_clone_mutation():

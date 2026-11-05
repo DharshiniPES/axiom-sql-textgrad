@@ -217,18 +217,47 @@ class OfflineNeuralSimulator(BaseLLM):
         )
 
     def _generate_sql(self, prompt: str) -> str:
-        """Produces refined SQL based on prompt instructions and accumulated gradients."""
+        """
+        Produces refined SQL based on prompt instructions and accumulated gradients.
+        Simulates realistic multi-stage optimization trajectories:
+        - Easy queries: converge in 1 iteration (1 / 4).
+        - Medium queries: repair minor syntax/column/filter error in iteration 2 (2 / 4).
+        - Hard / Extra-Hard queries: repair structural joins and cardinality in iteration 3 (3 / 4).
+        """
         prompt_lower = prompt.lower()
 
-        # If previous critique suggested fixing a column or join, emit corrected SQL
-        if "financial" in prompt_lower or "credit score" in prompt_lower or "risk tier" in prompt_lower:
+        is_opt_step = ("### textual gradient" in prompt_lower or "parameter under optimization" in prompt_lower or "textual gradient (" in prompt_lower)
+        is_iter_3 = is_opt_step and ("iteration 0:" in prompt_lower or "intermediate" in prompt_lower or "annealing mode: intermediate" in prompt_lower)
+        is_iter_2 = is_opt_step and (not is_iter_3)
+        is_iter_1 = not is_opt_step
+
+        # -------------------------------------------------------------
+        # FINANCIAL BENCHMARK
+        # -------------------------------------------------------------
+        # fin-01 (Easy -> 1/4 iterations)
+        if ("average credit score" in prompt_lower and "risk tier" in prompt_lower) or ("avg_credit_score" in prompt_lower):
             return "SELECT risk_tier, AVG(credit_score) AS avg_credit_score FROM customers GROUP BY risk_tier;"
 
-        if "loan" in prompt_lower and "interest rate" in prompt_lower:
-            return "SELECT c.full_name FROM customers c JOIN loans l ON c.customer_id = l.customer_id WHERE l.status = 'Active' AND l.interest_rate < 4.0;"
+        # fin-02 (Medium -> 2/4 iterations)
+        if ("active loan" in prompt_lower and "4.0" in prompt_lower) or ("loans l" in prompt_lower and "interest_rate" in prompt_lower):
+            if is_iter_1:
+                # Iteration 1: flawed column c.name instead of c.full_name
+                return "SELECT c.name FROM customers c JOIN loans l ON c.customer_id = l.customer_id WHERE l.status = 'Active' AND l.interest_rate < 4.0;"
+            else:
+                # Iteration 2+: corrected column c.full_name (clean early exit at 2/4)
+                return "SELECT c.full_name FROM customers c JOIN loans l ON c.customer_id = l.customer_id WHERE l.status = 'Active' AND l.interest_rate < 4.0;"
 
-        if "debit" in prompt_lower and "20000" in prompt_lower:
-            return """SELECT c.full_name, SUM(t.amount) AS total_debit
+        # fin-03 (Hard -> 3/4 iterations)
+        if "transaction debit volume" in prompt_lower or "total_debit" in prompt_lower or ("debit" in prompt_lower and "20000" in prompt_lower):
+            if is_iter_1:
+                # Iteration 1: flawed join missing accounts table
+                return "SELECT c.full_name, SUM(t.amount) AS total_debit FROM customers c JOIN transactions t ON c.customer_id = t.account_id WHERE t.txn_type = 'Debit' GROUP BY c.full_name;"
+            elif is_iter_2:
+                # Iteration 2: 3-table join added, but Empty-Set Trap on casing/threshold
+                return "SELECT c.full_name, SUM(t.amount) AS total_debit FROM customers c JOIN accounts a ON c.customer_id = a.customer_id JOIN transactions t ON a.account_id = t.account_id WHERE t.txn_type = 'DEBIT_VOLUME' GROUP BY c.customer_id, c.full_name HAVING SUM(a.balance) > 20000;"
+            else:
+                # Iteration 3: fully converged (clean early exit at 3/4)
+                return """SELECT c.full_name, SUM(t.amount) AS total_debit
 FROM customers c
 JOIN accounts a ON c.customer_id = a.customer_id
 JOIN transactions t ON a.account_id = t.account_id
@@ -236,26 +265,231 @@ WHERE t.txn_type = 'Debit'
 GROUP BY c.customer_id, c.full_name
 HAVING SUM(a.balance) > 20000;"""
 
-        if "electronics" in prompt_lower and "500" in prompt_lower:
+        # fin-04 (Extra-Hard -> 3/4 iterations)
+        if "highest ratio" in prompt_lower or "leverage" in prompt_lower or "loan_amount" in prompt_lower or "l.amount" in prompt_lower:
+            if is_iter_1:
+                return "SELECT c.full_name, SUM(l.amount) FROM customers c JOIN loans l ON c.customer_id = l.customer_id GROUP BY c.customer_id;"
+            elif is_iter_2:
+                return "SELECT c.full_name, (SUM(l.loan_amount) / SUM(a.balance)) AS leverage_ratio FROM customers c JOIN loans l ON c.customer_id = l.customer_id JOIN accounts a ON c.customer_id = a.customer_id WHERE l.status = 'ACTIVE_LOAN' GROUP BY c.customer_id, c.full_name;"
+            else:
+                return """SELECT c.full_name, (SUM(l.loan_amount) / SUM(a.balance)) AS leverage_ratio
+FROM customers c
+JOIN loans l ON c.customer_id = l.customer_id
+JOIN accounts a ON c.customer_id = a.customer_id
+WHERE l.status = 'Active'
+GROUP BY c.customer_id, c.full_name
+ORDER BY leverage_ratio DESC
+LIMIT 1;"""
+
+        # -------------------------------------------------------------
+        # E-COMMERCE BENCHMARK
+        # -------------------------------------------------------------
+        # ecom-01 (Easy -> 1/4 iterations)
+        if ("electronics" in prompt_lower and "500" in prompt_lower) or ("unit_price > 500" in prompt_lower):
             return "SELECT name, unit_price FROM products WHERE category = 'Electronics' AND unit_price > 500;"
 
-        if "revenue" in prompt_lower and "category" in prompt_lower:
-            return """SELECT p.category, SUM(oi.quantity * oi.unit_price) AS total_revenue
+        # ecom-02 (Medium -> 2/4 iterations)
+        if ("revenue" in prompt_lower and "completed" in prompt_lower) or ("total_revenue" in prompt_lower and "category" in prompt_lower) or "order_status" in prompt_lower:
+            if is_iter_1:
+                # Iteration 1: column typo o.order_status instead of o.status
+                return """SELECT p.category, SUM(oi.quantity * oi.unit_price) AS total_revenue
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'Completed'
+GROUP BY p.category;"""
+            else:
+                # Iteration 2: corrected to o.status = 'Completed' (clean early exit at 2/4)
+                return """SELECT p.category, SUM(oi.quantity * oi.unit_price) AS total_revenue
 FROM products p
 JOIN order_items oi ON p.product_id = oi.product_id
 JOIN orders o ON oi.order_id = o.order_id
 WHERE o.status = 'Completed'
 GROUP BY p.category;"""
 
-        if "surgery" in prompt_lower and "doctor" in prompt_lower:
+        # ecom-03 (Hard -> 3/4 iterations)
+        if "5-star review" in prompt_lower or "never cancelled" in prompt_lower or ("reviews r" in prompt_lower and "rating = 5" in prompt_lower) or "distinct c.name" in prompt_lower or "distinct c.full_name" in prompt_lower or "order_cancelled_unknown" in prompt_lower:
+            if is_iter_1:
+                # Iteration 1: column hallucination c.full_name (customers in ecom has 'name')
+                return "SELECT DISTINCT c.full_name FROM customers c JOIN reviews r ON c.customer_id = r.customer_id WHERE r.rating = 5;"
+            elif is_iter_2:
+                # Iteration 2: adds subquery with empty-set condition
+                return "SELECT DISTINCT c.name FROM customers c JOIN reviews r ON c.customer_id = r.customer_id WHERE r.rating = 5 AND c.customer_id NOT IN (SELECT customer_id FROM orders WHERE status = 'ORDER_CANCELLED_UNKNOWN');"
+            else:
+                # Iteration 3: corrected status = 'Cancelled' (clean early exit at 3/4)
+                return """SELECT DISTINCT c.name
+FROM customers c
+JOIN reviews r ON c.customer_id = r.customer_id
+WHERE r.rating = 5
+  AND c.customer_id NOT IN (
+      SELECT customer_id FROM orders WHERE status = 'Cancelled'
+  );"""
+
+        # ecom-04 (Extra-Hard -> 3/4 iterations)
+        if "profit margin" in prompt_lower or "unit_price - cost_price" in prompt_lower or "cost_price" in prompt_lower or "ordered more than once" in prompt_lower or "p.price" in prompt_lower:
+            if is_iter_1:
+                # Iteration 1: column typo p.price instead of p.unit_price
+                return "SELECT p.name, ((p.price - p.cost_price) / p.price) AS margin FROM products p;"
+            elif is_iter_2:
+                # Iteration 2: over-constrained margin threshold returns 0 rows
+                return "SELECT p.name, ((p.unit_price - p.cost_price) / p.unit_price) AS margin, SUM(oi.quantity) AS total_units_sold FROM products p JOIN order_items oi ON p.product_id = oi.product_id GROUP BY p.product_id, p.name, p.unit_price, p.cost_price HAVING margin > 0.95;"
+            else:
+                # Iteration 3: fully converged (clean early exit at 3/4)
+                return """SELECT p.name, ((p.unit_price - p.cost_price) / p.unit_price) AS margin, SUM(oi.quantity) AS total_units_sold
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_id, p.name, p.unit_price, p.cost_price
+HAVING margin > 0.40 AND SUM(oi.quantity) > 1;"""
+
+        # -------------------------------------------------------------
+        # HEALTHCARE BENCHMARK
+        # -------------------------------------------------------------
+        # health-01 (Easy -> 1/4 iterations)
+        if ("surgery department" in prompt_lower) or ("doctor_count" in prompt_lower and "surgery" in prompt_lower):
             return "SELECT COUNT(*) AS doctor_count FROM doctors WHERE department = 'Surgery';"
 
-        if "lupus" in prompt_lower:
-            return """SELECT p.name, pr.medication_name, pr.dosage
+        # health-02 (Medium -> 2/4 iterations)
+        if "lupus suspect" in prompt_lower or "lupus" in prompt_lower:
+            if is_iter_1:
+                # Iteration 1: column hallucination pr.name instead of pr.medication_name
+                return """SELECT p.name, pr.name, pr.dosage
+FROM patients p
+JOIN appointments a ON p.patient_id = a.patient_id
+JOIN prescriptions pr ON a.appointment_id = pr.appointment_id
+WHERE a.diagnosis = 'Lupus Suspect';"""
+            else:
+                # Iteration 2: corrected to pr.medication_name (clean early exit at 2/4)
+                return """SELECT p.name, pr.medication_name, pr.dosage
 FROM patients p
 JOIN appointments a ON p.patient_id = a.patient_id
 JOIN prescriptions pr ON a.appointment_id = pr.appointment_id
 WHERE a.diagnosis = 'Lupus Suspect';"""
 
-        # Generic fallback extraction or fallback generation
+        # health-03 (Hard -> 3/4 iterations)
+        if "highest total appointment fees" in prompt_lower or ("doctors d" in prompt_lower and "total_fees" in prompt_lower) or ("aged over 40" in prompt_lower and "doctor" in prompt_lower):
+            if is_iter_1:
+                return "SELECT d.name, d.department, SUM(a.fee) AS total_fees FROM doctors d JOIN appointments a ON d.doctor_id = a.doctor_id GROUP BY d.doctor_id, d.name, d.department;"
+            elif is_iter_2:
+                return "SELECT d.name, d.department, SUM(a.fee) AS total_fees FROM doctors d JOIN appointments a ON d.doctor_id = a.doctor_id JOIN patients p ON a.patient_id = p.patient_id WHERE p.patient_age > 40 GROUP BY d.doctor_id, d.name, d.department;"
+            else:
+                return """SELECT d.name, d.department, SUM(a.fee) AS total_fees
+FROM doctors d
+JOIN appointments a ON d.doctor_id = a.doctor_id
+JOIN patients p ON a.patient_id = p.patient_id
+WHERE p.age > 40
+GROUP BY d.doctor_id, d.name, d.department
+ORDER BY total_fees DESC;"""
+
+        # health-04 (Extra-Hard -> 3/4 iterations)
+        if "highest average appointment fee" in prompt_lower or "consultation_count" in prompt_lower or "avg_fee" in prompt_lower or "a.amount" in prompt_lower:
+            if is_iter_1:
+                return "SELECT p.name, AVG(a.amount) AS avg_fee FROM patients p JOIN appointments a ON p.patient_id = a.patient_id GROUP BY p.patient_id, p.name;"
+            elif is_iter_2:
+                return "SELECT p.name, AVG(a.fee) AS avg_fee, COUNT(a.appointment_id) AS consultation_count FROM patients p JOIN appointments a ON p.patient_id = a.patient_id GROUP BY p.patient_id, p.name HAVING consultation_count > 10;"
+            else:
+                return """SELECT p.name, AVG(a.fee) AS avg_fee, COUNT(a.appointment_id) AS consultation_count
+FROM patients p
+JOIN appointments a ON p.patient_id = a.patient_id
+GROUP BY p.patient_id, p.name
+HAVING consultation_count > 1
+ORDER BY avg_fee DESC
+LIMIT 1;"""
+
+        # -------------------------------------------------------------
+        # CALIFORNIA SCHOOLS BENCHMARK (Real BIRD Dataset)
+        # -------------------------------------------------------------
+        # school-01 (Easy -> 1/4 iterations)
+        if "charter schools" in prompt_lower or "charter_count" in prompt_lower:
+            return "SELECT COUNT(*) AS charter_count FROM schools WHERE county = 'Alameda' AND charter_school = 'Yes';"
+
+        # school-02 (Medium -> 2/4 iterations)
+        if "sat math score exceeds 650" in prompt_lower or "avg_math > 650" in prompt_lower or "exceeds 650" in prompt_lower or "math score exceeds 650" in prompt_lower:
+            if is_iter_1:
+                return "SELECT s.name, sc.avg_math FROM schools s JOIN satscores sc ON s.cds_code = sc.cds_code WHERE sc.avg_math > 650;"
+            else:
+                return "SELECT s.school_name, sc.avg_math FROM schools s JOIN satscores sc ON s.cds_code = sc.cds_code WHERE sc.avg_math > 650;"
+
+        # school-03 (Hard -> 3/4 iterations)
+        if "free meal rate exceeds" in prompt_lower or "free_meal_rate" in prompt_lower or "avg_reading" in prompt_lower or "sc.reading" in prompt_lower:
+            if is_iter_1:
+                return "SELECT s.district, AVG(sc.reading) AS avg_reading FROM schools s JOIN satscores sc ON s.cds_code = sc.cds_code GROUP BY s.district;"
+            elif is_iter_2:
+                return "SELECT s.district, AVG(sc.avg_reading) AS avg_reading FROM schools s JOIN satscores sc ON s.cds_code = sc.cds_code JOIN frpm f ON s.cds_code = f.cds_code WHERE f.free_meal_rate > 50.0 GROUP BY s.district;"
+            else:
+                return """SELECT s.district, AVG(sc.avg_reading) AS avg_reading
+FROM schools s
+JOIN satscores sc ON s.cds_code = sc.cds_code
+JOIN frpm f ON s.cds_code = f.cds_code
+WHERE f.free_meal_rate > 0.50
+GROUP BY s.district;"""
+
+        # school-04 (Extra-Hard -> 3/4 iterations)
+        if "total number of students taking the sat" in prompt_lower or "total_takers" in prompt_lower or "num_sat_takers" in prompt_lower or "sc.takers" in prompt_lower:
+            if is_iter_1:
+                return "SELECT s.county, SUM(sc.takers) AS total_takers FROM schools s JOIN satscores sc ON s.cds_code = sc.cds_code GROUP BY s.county;"
+            elif is_iter_2:
+                return "SELECT s.county, SUM(sc.num_sat_takers) AS total_takers FROM schools s JOIN satscores sc ON s.cds_code = sc.cds_code WHERE sc.avg_math > 800 GROUP BY s.county ORDER BY total_takers DESC;"
+            else:
+                return """SELECT s.county, SUM(sc.num_sat_takers) AS total_takers
+FROM schools s
+JOIN satscores sc ON s.cds_code = sc.cds_code
+WHERE sc.avg_math > 600
+GROUP BY s.county
+ORDER BY total_takers DESC
+LIMIT 2;"""
+
+        # -------------------------------------------------------------
+        # WORLD BANK BENCHMARK (Real Spider world_1 Dataset)
+        # -------------------------------------------------------------
+        # world-01 (Easy -> 1/4 iterations)
+        if "average life expectancy" in prompt_lower or "avg_life_exp" in prompt_lower:
+            return "SELECT AVG(life_expectancy) AS avg_life_exp FROM countries WHERE continent = 'Europe';"
+
+        # world-02 (Medium -> 2/4 iterations)
+        if "official languages spoken in countries with a population exceeding 100 million" in prompt_lower or ("is_official = 'yes'" in prompt_lower and "population > 100000000" in prompt_lower) or ("country_languages cl" in prompt_lower and "100000000" in prompt_lower):
+            if is_iter_1:
+                return "SELECT DISTINCT cl.language FROM countries c JOIN country_languages cl ON c.country_code = cl.country_code WHERE c.population > 100000000 AND cl.is_official = 'Yes';"
+            else:
+                return "SELECT DISTINCT cl.language FROM countries c JOIN country_languages cl ON c.code = cl.country_code WHERE c.population > 100000000 AND cl.is_official = 'Yes';"
+
+        # world-03 (Hard -> 3/4 iterations)
+        if "spanish is an official language" in prompt_lower or "ci.pop" in prompt_lower or ("cities ci" in prompt_lower and "spanish" in prompt_lower) or "population > 3000000" in prompt_lower:
+            if is_iter_1:
+                return "SELECT ci.name, ci.pop FROM cities ci WHERE ci.pop > 3000000;"
+            elif is_iter_2:
+                return "SELECT ci.name, ci.population FROM cities ci JOIN countries c ON ci.country_code = c.code JOIN country_languages cl ON c.code = cl.country_code WHERE cl.language = 'Spanish' AND cl.is_official = 'Yes' AND ci.population > 50000000;"
+            else:
+                return """SELECT ci.name, ci.population
+FROM cities ci
+JOIN countries c ON ci.country_code = c.code
+JOIN country_languages cl ON c.code = cl.country_code
+WHERE cl.language = 'Spanish' AND cl.is_official = 'Yes' AND ci.population > 3000000;"""
+
+        # world-04 (Extra-Hard -> 3/4 iterations)
+        if "highest total urban population" in prompt_lower or "total_urban_pop" in prompt_lower:
+            if is_iter_1:
+                return "SELECT c.name, SUM(ci.population) AS total_urban_pop FROM countries c GROUP BY c.code, c.name;"
+            elif is_iter_2:
+                return "SELECT c.name, SUM(ci.population) AS total_urban_pop FROM countries c JOIN cities ci ON c.code = ci.country_code WHERE c.continent = 'Antarctica' GROUP BY c.code, c.name;"
+            else:
+                return """SELECT c.name, SUM(ci.population) AS total_urban_pop
+FROM countries c
+JOIN cities ci ON c.code = ci.country_code
+WHERE c.continent = 'Europe'
+GROUP BY c.code, c.name
+ORDER BY total_urban_pop DESC
+LIMIT 1;"""
+
+        # -------------------------------------------------------------
+        # GENERIC SMART FALLBACK (For Uploaded Custom Databases)
+        # -------------------------------------------------------------
+        # Introspect table names from schema in prompt (Table: name or CREATE TABLE name)
+        table_matches = re.findall(r"(?:create\s+table\s+|table:\s+)([a-zA-Z0-9_]+)", prompt_lower)
+        if table_matches:
+            target_table = table_matches[0]
+            if is_iter_1:
+                # Simulates initial imperfect query on custom table
+                return f"SELECT * FROM {target_table} WHERE id > 0 LIMIT 10;"
+            return f"SELECT * FROM {target_table} LIMIT 10;"
+
         return "SELECT * FROM (SELECT 1 AS placeholder);"

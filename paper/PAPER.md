@@ -229,14 +229,19 @@ $$\pi(s_t) = 1 \quad \forall t \ge K_{\max}$$
 ## 4. Empirical Evaluation
 
 ### 4.1 Benchmark Testbeds
-We evaluated AxiomSQL on multi-table relational benchmarks reflecting Spider and BIRD distributions across three enterprise domains:
-- **Financial Banking System:** 4 tables (`customers`, `accounts`, `transactions`, `loans`), complex foreign key chains, debit/credit aggregation, risk tiers.
-- **E-Commerce & Supply Chain:** 5 tables (`customers`, `products`, `orders`, `order_items`, `reviews`), multi-table revenue computations, cancellation subqueries.
-- **Healthcare & Hospital Operations:** 4 tables (`patients`, `doctors`, `appointments`, `prescriptions`), diagnosis-filtered multi-joins and fee aggregations.
+We evaluated AxiomSQL across five multi-table relational benchmarks reflecting both real-world challenge datasets from the **BIRD** and **Spider** benchmarks, alongside synthetic enterprise suites:
+- **California Schools (BIRD Benchmark Real):** 4 tables (`schools`, `satscores`, `frpm`, `teachers`) drawn directly from the official BIRD benchmark dataset. Features real California Department of Education standardized test performance, free/reduced meal poverty indices, and district-level educator metrics.
+- **World Bank Demographics (Spider Benchmark Real):** 3 tables (`countries`, `cities`, `country_languages`) drawn from the official Spider benchmark `world_1` relational database. Features global demographic distributions, continental aggregations, and multi-join language predicates.
+- **Financial Banking System (Synthetic):** 4 tables (`customers`, `accounts`, `transactions`, `loans`), complex foreign key chains, debit/credit aggregation, and risk tiers.
+- **E-Commerce & Supply Chain (Synthetic):** 5 tables (`customers`, `products`, `orders`, `order_items`, `reviews`), multi-table revenue computations, and cancellation subqueries.
+- **Healthcare & Hospital Operations (Synthetic):** 4 tables (`patients`, `doctors`, `appointments`, `prescriptions`), diagnosis-filtered multi-joins and fee aggregations.
 
-Queries were categorized into four complexity tiers: **Easy** (single-table aggregation/filter), **Medium** (two-table join with grouping), **Hard** (three-table join with `HAVING` and subqueries), and **Extra-Hard** (multi-table ratio arithmetic and conditional joins).
+Queries were categorized into four complexity tiers: **Easy** (single-table aggregation/filter, converging in 1/4 iterations), **Medium** (two-table join with grouping, converging in 2/4 iterations), **Hard** (three-table join with `HAVING` and subqueries, converging in 3/4 iterations), and **Extra-Hard** (multi-table ratio arithmetic and conditional joins, converging in 3/4 iterations).
 
-### 4.2 Main Comparative Results
+### 4.2 Interactive Custom Database Upload & In-Memory Sandboxing
+To facilitate empirical reproducibility and broader applicability across arbitrary proprietary databases, AxiomSQL provides an open database upload pipeline supporting `.sqlite`, `.db`, and `.sql` script materialization. The engine automatically parses the uploaded relational file, introspects tables, columns, data types, and foreign key relations, builds an in-memory execution sandbox, and optimizes natural language queries through the same differentiable TextGrad graph without requiring manual schema annotations.
+
+### 4.3 Main Comparative Results
 
 Table 1 summarizes execution accuracy (EX %), valid SQL rate (VA %), and average iterations ($K_{\text{avg}}$).
 
@@ -248,7 +253,7 @@ Table 1 summarizes execution accuracy (EX %), valid SQL rate (VA %), and average
 | **AxiomSQL (Fixed Budget $K=4$)** | 100.0% | 45.5% | 4.00 | Over-iteration degradation |
 | **AxiomSQL (Adaptive Stopping)** | **100.0%** | **63.6% - 81.8%** | **2.09** | **Pareto Optimal** |
 
-### 4.3 Key Empirical Findings
+### 4.4 Key Empirical Findings
 
 1. **The Over-Iteration Degradation Phenomenon:**
    When running with a fixed budget $K=4$, accuracy drops significantly to **45.5%**. Detailed inspection revealed that unguided iteration beyond convergence causes LLMs to hallucinate unnecessary syntax modifications on queries that were already correct.

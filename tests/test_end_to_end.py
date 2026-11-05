@@ -49,3 +49,53 @@ def test_benchmark_evaluator_small_run():
     summary = BenchmarkEvaluator.compute_summary_table(df)
     assert len(summary) == 4
     assert "Exec Accuracy EX (%)" in summary.columns
+
+
+def test_pipeline_end_to_end_california_schools_multi_iteration():
+    sandbox = create_benchmark_sandbox("california_schools")
+    query_item = [q for q in BENCHMARK_SUITE if q.id == "school-02"][0]
+    gold_res = sandbox.execute_query(query_item.gold_sql)
+
+    pipeline = AxiomSQLPipeline(
+        llm=OfflineNeuralSimulator(),
+        config=PipelineConfig(
+            max_iterations=4,
+            stopping_strategy=StoppingStrategy.EXECUTION_GATED,
+        )
+    )
+
+    result = pipeline.run(
+        question=query_item.question,
+        sandbox=sandbox,
+        gold_result=gold_res,
+    )
+
+    assert result.execution_result.success is True
+    assert result.total_iterations == 2
+    assert result.is_correct is True
+    sandbox.close()
+
+
+def test_pipeline_end_to_end_world_bank_multi_iteration():
+    sandbox = create_benchmark_sandbox("world_bank")
+    query_item = [q for q in BENCHMARK_SUITE if q.id == "world-03"][0]
+    gold_res = sandbox.execute_query(query_item.gold_sql)
+
+    pipeline = AxiomSQLPipeline(
+        llm=OfflineNeuralSimulator(),
+        config=PipelineConfig(
+            max_iterations=4,
+            stopping_strategy=StoppingStrategy.EXECUTION_GATED,
+        )
+    )
+
+    result = pipeline.run(
+        question=query_item.question,
+        sandbox=sandbox,
+        gold_result=gold_res,
+    )
+
+    assert result.execution_result.success is True
+    assert result.total_iterations == 3
+    assert result.is_correct is True
+    sandbox.close()

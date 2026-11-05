@@ -79,12 +79,77 @@ function initBackendToggle() {
  * Event Listeners
  */
 function initEventListeners() {
-  document.getElementById('dbSelect').addEventListener('change', populatePresetQueries);
+  document.getElementById('dbSelect').addEventListener('change', () => {
+    populatePresetQueries();
+    renderSchemaTree();
+  });
   document.getElementById('presetQuerySelect').addEventListener('change', onPresetQuerySelected);
   document.getElementById('runBtn').addEventListener('click', runOptimization);
   document.getElementById('runScratchpadBtn').addEventListener('click', runScratchpad);
   document.getElementById('runBenchmarkBtn').addEventListener('click', runFullBenchmark);
   document.getElementById('copySqlBtn').addEventListener('click', copySqlToClipboard);
+
+  const uploadDbBtn = document.getElementById('uploadDbBtn');
+  const dbFileInput = document.getElementById('dbFileInput');
+  if (uploadDbBtn && dbFileInput) {
+    uploadDbBtn.addEventListener('click', () => dbFileInput.click());
+    dbFileInput.addEventListener('change', handleDatabaseUpload);
+  }
+}
+
+/**
+ * Handle custom database upload (.sqlite, .db, .sql)
+ */
+async function handleDatabaseUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.style.display = 'block';
+  statusEl.style.color = '#93c5fd';
+  statusEl.textContent = `Uploading and introspecting ${file.name}...`;
+
+  const formData = new FormData();
+  formData.append('database', file);
+
+  try {
+    const res = await fetch('/api/upload-database', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      statusEl.style.color = '#f87171';
+      statusEl.textContent = `Upload failed: ${data.error || 'Unknown error'}`;
+      return;
+    }
+
+    if (!appMetadata) appMetadata = { databases: {}, benchmark_queries: [] };
+    if (!appMetadata.databases) appMetadata.databases = {};
+
+    appMetadata.databases[data.db_id] = {
+      name: data.name,
+      schema_summary: data.schema_summary,
+      tables: data.tables,
+      db_path: data.db_path,
+      is_custom: true
+    };
+
+    populateDatabaseSelect();
+    document.getElementById('dbSelect').value = data.db_id;
+    populatePresetQueries();
+    renderSchemaTree();
+
+    const tableNames = Object.keys(data.tables || {});
+    statusEl.style.color = '#34d399';
+    statusEl.textContent = `Loaded ${data.original_name} (${tableNames.length} tables: ${tableNames.slice(0, 3).join(', ')}${tableNames.length > 3 ? '...' : ''})`;
+  } catch (err) {
+    statusEl.style.color = '#f87171';
+    statusEl.textContent = `Upload error: ${err.message}`;
+  } finally {
+    event.target.value = '';
+  }
 }
 
 /**
@@ -94,10 +159,33 @@ async function loadMetadata() {
   try {
     const res = await fetch('/api/metadata');
     appMetadata = await res.json();
+    populateDatabaseSelect();
     populatePresetQueries();
     renderSchemaTree();
   } catch (err) {
     console.error('Failed to load metadata:', err);
+  }
+}
+
+/**
+ * Populate Database Selection Dropdown dynamically
+ */
+function populateDatabaseSelect() {
+  if (!appMetadata || !appMetadata.databases) return;
+  const dbSelect = document.getElementById('dbSelect');
+  const currentVal = dbSelect.value;
+  dbSelect.innerHTML = '';
+
+  Object.keys(appMetadata.databases).forEach(dbKey => {
+    const dbInfo = appMetadata.databases[dbKey];
+    const opt = document.createElement('option');
+    opt.value = dbKey;
+    opt.textContent = dbInfo.name || dbKey;
+    dbSelect.appendChild(opt);
+  });
+
+  if (currentVal && appMetadata.databases[currentVal]) {
+    dbSelect.value = currentVal;
   }
 }
 
@@ -111,21 +199,29 @@ function populatePresetQueries() {
   const select = document.getElementById('presetQuerySelect');
   select.innerHTML = '';
 
+  const dbInfo = (appMetadata.databases || {})[dbId] || {};
   const queries = (appMetadata.benchmark_queries || []).filter(q => q.db_id === dbId);
-  queries.forEach((q, idx) => {
+
+  queries.forEach((q) => {
     const opt = document.createElement('option');
     opt.value = q.id;
-    opt.textContent = `[${q.difficulty.toUpperCase()}] ${q.question}`;
+    const iters = q.expected_iterations ? ` - ${q.expected_iterations}/4 Iters` : '';
+    opt.textContent = `[${q.difficulty.toUpperCase()}${iters}] ${q.question}`;
     select.appendChild(opt);
   });
 
   const customOpt = document.createElement('option');
   customOpt.value = 'custom';
-  customOpt.textContent = 'Custom Query (Write your own inquiry)';
+  customOpt.textContent = dbInfo.is_custom 
+    ? 'Custom Inquiry on Uploaded Database' 
+    : 'Custom Query (Write your own inquiry)';
   select.appendChild(customOpt);
 
   if (queries.length > 0) {
     select.selectedIndex = 0;
+    onPresetQuerySelected();
+  } else {
+    select.value = 'custom';
     onPresetQuerySelected();
   }
 
@@ -140,17 +236,27 @@ function onPresetQuerySelected() {
   const questionInput = document.getElementById('questionInput');
   const tag = document.getElementById('queryDifficultyTag');
   const selectedId = select.value;
+  const dbId = document.getElementById('dbSelect').value;
+  const dbInfo = (appMetadata && appMetadata.databases && appMetadata.databases[dbId]) || {};
 
   if (selectedId === 'custom') {
-    questionInput.value = 'Find customers with total account balance above 15000.';
-    tag.textContent = 'Difficulty: Custom';
+    if (dbInfo.is_custom) {
+      const tables = Object.keys(dbInfo.tables || {});
+      const firstTable = tables[0] || 'records';
+      questionInput.value = `Show all records from ${firstTable} limited to top 10 rows.`;
+      tag.textContent = 'Difficulty: Uploaded DB Query';
+    } else {
+      questionInput.value = 'Find customers with total account balance above 15000.';
+      tag.textContent = 'Difficulty: Custom';
+    }
     return;
   }
 
   const queryObj = (appMetadata.benchmark_queries || []).find(q => q.id === selectedId);
   if (queryObj) {
     questionInput.value = queryObj.question;
-    tag.textContent = `Difficulty: ${queryObj.difficulty.toUpperCase()}`;
+    const iters = queryObj.expected_iterations ? ` (${queryObj.expected_iterations}/4 Iters)` : '';
+    tag.textContent = `Difficulty: ${queryObj.difficulty.toUpperCase()}${iters}`;
   }
 }
 
@@ -176,9 +282,11 @@ async function runOptimization() {
   const backend = document.getElementById('backendSelect').value;
   const apiKey = document.getElementById('apiKeyInput').value;
 
+  const dbInfo = (appMetadata && appMetadata.databases && appMetadata.databases[dbId]) || {};
   const payload = {
     question,
     db_id: dbId,
+    db_path: dbInfo.db_path || undefined,
     max_iterations: maxK,
     stopping_strategy: strategy,
     tau_confidence: tau,
@@ -650,11 +758,12 @@ async function runScratchpad() {
 
   if (!query) return;
 
+  const dbInfo = (appMetadata && appMetadata.databases && appMetadata.databases[dbId]) || {};
   try {
     const res = await fetch('/api/scratchpad', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, db_id: dbId })
+      body: JSON.stringify({ query, db_id: dbId, db_path: dbInfo.db_path || undefined })
     });
     const data = await res.json();
 

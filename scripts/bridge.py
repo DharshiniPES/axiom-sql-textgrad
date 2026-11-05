@@ -27,14 +27,21 @@ def get_llm(backend_type: str = "offline", api_key: str = ""):
 
 
 def cmd_get_metadata():
-    dbs = ["financial", "ecommerce", "healthcare"]
+    dbs = ["financial", "ecommerce", "healthcare", "california_schools", "world_bank"]
+    db_labels = {
+        "financial": "Financial Banking System (Synthetic)",
+        "ecommerce": "E-Commerce & Supply Chain (Synthetic)",
+        "healthcare": "Healthcare & Patient Registry (Synthetic)",
+        "california_schools": "California Schools (BIRD Benchmark Real)",
+        "world_bank": "World Bank Global Demographics (Spider Benchmark Real)",
+    }
     db_metadata = {}
 
     for db_id in dbs:
         sb = create_benchmark_sandbox(db_id)
         schema_dict = sb.get_schema_dict()
         db_metadata[db_id] = {
-            "name": db_id.capitalize(),
+            "name": db_labels.get(db_id, db_id.capitalize()),
             "schema_summary": sb.get_schema_summary(),
             "tables": schema_dict,
         }
@@ -49,6 +56,7 @@ def cmd_get_metadata():
             "question": q.question,
             "gold_sql": q.gold_sql,
             "complexity_factors": q.complexity_factors,
+            "expected_iterations": getattr(q, "expected_iterations", 1),
         })
 
     return {
@@ -66,6 +74,7 @@ def cmd_get_metadata():
 def cmd_run_query(payload):
     question = payload.get("question", "")
     db_id = payload.get("db_id", "financial")
+    db_path = payload.get("db_path")
     max_k = int(payload.get("max_iterations", 4))
     strat_key = payload.get("stopping_strategy", "execution_gated")
     strategy = StoppingStrategy(strat_key) if strat_key in [s.value for s in StoppingStrategy] else StoppingStrategy.EXECUTION_GATED
@@ -79,7 +88,10 @@ def cmd_run_query(payload):
     weight_cost = float(payload.get("weight_plan_cost", 0.05))
 
     llm = get_llm(backend_type, api_key)
-    sandbox = create_benchmark_sandbox(db_id)
+    if db_path and os.path.exists(db_path):
+        sandbox = DatabaseSandbox(db_path)
+    else:
+        sandbox = create_benchmark_sandbox(db_id)
 
     # Find gold query if present
     gold_sql = None
@@ -188,9 +200,13 @@ def cmd_run_benchmark(payload):
 
 def cmd_run_scratchpad(payload):
     db_id = payload.get("db_id", "financial")
+    db_path = payload.get("db_path")
     query = payload.get("query", "SELECT 1;")
 
-    sandbox = create_benchmark_sandbox(db_id)
+    if db_path and os.path.exists(db_path):
+        sandbox = DatabaseSandbox(db_path)
+    else:
+        sandbox = create_benchmark_sandbox(db_id)
     res = sandbox.execute_query(query)
     sandbox.close()
 
@@ -206,6 +222,42 @@ def cmd_run_scratchpad(payload):
     }
 
 
+def cmd_inspect_database(payload):
+    db_path = payload.get("db_path", "")
+    if not db_path or not os.path.exists(db_path):
+        return {"error": f"Database file not found: {db_path}"}
+
+    # If file is a .sql script, materialize it into a companion .sqlite file
+    if db_path.lower().endswith(".sql"):
+        sqlite_path = os.path.splitext(db_path)[0] + ".sqlite"
+        try:
+            with open(db_path, "r", encoding="utf-8", errors="ignore") as f:
+                sql_script = f.read()
+            import sqlite3
+            conn = sqlite3.connect(sqlite_path)
+            conn.executescript(sql_script)
+            conn.commit()
+            conn.close()
+            db_path = sqlite_path
+        except Exception as e:
+            return {"error": f"Failed to execute SQL script into SQLite database: {str(e)}"}
+
+    try:
+        sandbox = DatabaseSandbox(db_path)
+        schema_dict = sandbox.get_schema_dict()
+        summary = sandbox.get_schema_summary()
+        sandbox.close()
+        return {
+            "success": True,
+            "db_path": db_path,
+            "name": os.path.basename(db_path),
+            "tables": schema_dict,
+            "schema_summary": summary,
+        }
+    except Exception as e:
+        return {"error": f"Failed to inspect SQLite database: {str(e)}"}
+
+
 def main():
     if len(sys.argv) < 2:
         print(json.dumps({"error": "No action provided"}))
@@ -218,7 +270,7 @@ def main():
         arg_val = sys.argv[2]
         if os.path.isfile(arg_val):
             try:
-                with open(arg_val, "r", encoding="utf-8") as f:
+                with open(arg_val, "r", encoding="utf-8-sig") as f:
                     payload = json.load(f)
             except Exception:
                 payload = {}
@@ -237,6 +289,8 @@ def main():
             res = cmd_run_benchmark(payload)
         elif action == "run-scratchpad":
             res = cmd_run_scratchpad(payload)
+        elif action == "inspect-database":
+            res = cmd_inspect_database(payload)
         else:
             res = {"error": f"Unknown action: {action}"}
 

@@ -28,12 +28,16 @@ class PipelineConfig:
     cost_penalty_lambda: float = 0.08
     learning_rate: str = "moderate"
     enable_momentum: bool = True
-    weight_syntax: float = 0.35
-    weight_schema: float = 0.20
+    enable_annealing: bool = True
+    enable_adversarial_testing: bool = True
+    weight_syntax: float = 0.30
+    weight_schema: float = 0.15
     weight_cardinality: float = 0.15
     weight_semantic: float = 0.20
-    weight_plan_cost: float = 0.05
-    weight_ast_cycle: float = 0.05
+    weight_plan_cost: float = 0.08
+    weight_ast_cycle: float = 0.04
+    weight_ast_div: float = 0.04
+    weight_robustness: float = 0.04
 
 
 @dataclass
@@ -80,6 +84,8 @@ class AxiomSQLPipeline:
             weight_semantic=self.config.weight_semantic,
             weight_plan_cost=self.config.weight_plan_cost,
             weight_ast_cycle=self.config.weight_ast_cycle,
+            weight_ast_div=self.config.weight_ast_div,
+            weight_robustness=self.config.weight_robustness,
         )
 
     def run(
@@ -93,6 +99,8 @@ class AxiomSQLPipeline:
         start_time = time.perf_counter()
         schema_text = schema_summary or sandbox.get_schema_summary()
 
+        adv_sandbox = sandbox.create_adversarial_clone() if self.config.enable_adversarial_testing else None
+
         graph = SQLComputationalGraph(
             llm=self.llm,
             sandbox=sandbox,
@@ -104,6 +112,7 @@ class AxiomSQLPipeline:
             llm=self.llm,
             learning_rate=self.config.learning_rate,
             enable_momentum=self.config.enable_momentum,
+            enable_annealing=self.config.enable_annealing,
         )
 
         controller = AdaptiveStoppingController(
@@ -135,7 +144,10 @@ class AxiomSQLPipeline:
                 current_sql = graph.v_sql.value
 
             # 2. Forward Database Execution & Loss
-            current_exec, loss_output = graph.forward_execute(gold_result=gold_result)
+            current_exec, loss_output = graph.forward_execute(
+                gold_result=gold_result,
+                adversarial_sandbox=adv_sandbox,
+            )
 
             # 3. Backward Pass (Textual Gradient Calculation)
             sql_grad, plan_grad, avg_norm = graph.backward(loss_output=loss_output, step=iteration)
@@ -186,6 +198,9 @@ class AxiomSQLPipeline:
                 strategy_used=self.config.stopping_strategy.value,
                 details={"status": "NATURAL_TERMINATION"},
             )
+
+        if adv_sandbox:
+            adv_sandbox.close()
 
         total_time = time.perf_counter() - start_time
 

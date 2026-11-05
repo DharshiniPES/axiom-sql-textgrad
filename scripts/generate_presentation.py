@@ -1,6 +1,7 @@
 """
 AxiomSQL Presentation Generator using python-pptx.
-Creates a professional, academic/defense-ready 12-slide presentation.
+Generates a comprehensive, academic/defense-ready 14-slide presentation
+showcasing the full theoretical framework and all novelty factors.
 """
 
 import os
@@ -19,15 +20,17 @@ def build_presentation(output_path: str):
     blank_layout = prs.slide_layouts[6]
 
     # Color Palette (Dark Navy, Deep Blue, Emerald, Slate, Pure White)
-    COLOR_NAVY = RGBColor(15, 23, 42)      # #0F172A
-    COLOR_BLUE = RGBColor(37, 99, 235)     # #2563EB
-    COLOR_TEAL = RGBColor(13, 148, 136)    # #0D9488
-    COLOR_SLATE = RGBColor(71, 85, 105)    # #475569
-    COLOR_DARK = RGBColor(30, 41, 59)      # #1E293B
+    COLOR_NAVY = RGBColor(15, 23, 42)        # #0F172A
+    COLOR_BLUE = RGBColor(37, 99, 235)       # #2563EB
+    COLOR_TEAL = RGBColor(13, 148, 136)      # #0D9488
+    COLOR_SLATE = RGBColor(71, 85, 105)      # #475569
+    COLOR_DARK = RGBColor(30, 41, 59)        # #1E293B
     COLOR_WHITE = RGBColor(255, 255, 255)
     COLOR_LIGHT_BG = RGBColor(248, 250, 252) # #F8FAFC
     COLOR_CARD_BG = RGBColor(241, 245, 249)  # #F1F5F9
     COLOR_BORDER = RGBColor(203, 213, 225)   # #CBD5E1
+    COLOR_AMBER = RGBColor(217, 119, 6)      # #D97706
+    COLOR_PURPLE = RGBColor(124, 58, 237)    # #7C3AED
 
     def set_slide_background(slide, color):
         background = slide.background
@@ -54,11 +57,11 @@ def build_presentation(output_path: str):
         tx_title = slide.shapes.add_textbox(Inches(0.8), Inches(0.38), Inches(11.7), Inches(0.65))
         p_title = tx_title.text_frame.paragraphs[0]
         p_title.text = title_text
-        p_title.font.size = Pt(22)
+        p_title.font.size = Pt(21)
         p_title.font.bold = True
         p_title.font.color.rgb = COLOR_WHITE
 
-    def add_card(slide, left, top, width, height, title="", bg_color=COLOR_CARD_BG, border_color=COLOR_BORDER):
+    def add_card(slide, left, top, width, height, title="", bg_color=COLOR_CARD_BG, border_color=COLOR_BORDER, title_color=COLOR_BLUE):
         card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
         card.fill.solid()
         card.fill.fore_color.rgb = bg_color
@@ -71,7 +74,7 @@ def build_presentation(output_path: str):
             p.text = title.upper()
             p.font.size = Pt(11)
             p.font.bold = True
-            p.font.color.rgb = COLOR_BLUE
+            p.font.color.rgb = title_color
 
         return card
 
@@ -82,13 +85,13 @@ def build_presentation(output_path: str):
     set_slide_background(s1, COLOR_NAVY)
 
     # Accent bar
-    bar = s1.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.2), Inches(1.8), Inches(0.15), Inches(3.2))
+    bar = s1.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.2), Inches(1.6), Inches(0.15), Inches(3.6))
     bar.fill.solid()
     bar.fill.fore_color.rgb = COLOR_BLUE
     bar.line.fill.background()
 
     # Title box
-    tx_title = s1.shapes.add_textbox(Inches(1.5), Inches(1.6), Inches(10.5), Inches(2.2))
+    tx_title = s1.shapes.add_textbox(Inches(1.5), Inches(1.4), Inches(10.8), Inches(2.3))
     tf_title = tx_title.text_frame
     tf_title.word_wrap = True
     p1 = tf_title.paragraphs[0]
@@ -99,14 +102,14 @@ def build_presentation(output_path: str):
     p1.line_spacing = 1.15
 
     # Subtitle
-    tx_sub = s1.shapes.add_textbox(Inches(1.5), Inches(3.7), Inches(10.5), Inches(1.0))
+    tx_sub = s1.shapes.add_textbox(Inches(1.5), Inches(3.7), Inches(10.8), Inches(1.2))
     p2 = tx_sub.text_frame.paragraphs[0]
-    p2.text = "A Differentiable Computational Graph Framework with Execution-Gated Stopping for Enterprise Text-to-SQL"
-    p2.font.size = Pt(16)
+    p2.text = "A Differentiable Computational Graph Framework Featuring Adversarial Boundary Perturbation,\nSymbolic AST Divergence Regularization, and Textual Learning Rate Annealing"
+    p2.font.size = Pt(15)
     p2.font.color.rgb = RGBColor(148, 163, 184)
 
     # Presenter Meta Box
-    tx_meta = s1.shapes.add_textbox(Inches(1.5), Inches(5.2), Inches(10.5), Inches(1.5))
+    tx_meta = s1.shapes.add_textbox(Inches(1.5), Inches(5.1), Inches(10.8), Inches(1.6))
     tf_meta = tx_meta.text_frame
     p3 = tf_meta.paragraphs[0]
     p3.text = "Author: Dharshini | Advanced AI Systems Research Lab"
@@ -124,42 +127,41 @@ def build_presentation(output_path: str):
     # =========================================================================
     s2 = prs.slides.add_slide(blank_layout)
     set_slide_background(s2, COLOR_LIGHT_BG)
-    add_header(s2, "Executive Summary: The Enterprise Text-to-SQL Challenge")
+    add_header(s2, "Executive Summary: The Enterprise Text-to-SQL Dilemma")
 
-    # 3 Column Cards
     c1 = add_card(s2, 0.8, 1.5, 3.6, 5.3, "1. Enterprise Dilemma")
     tx1 = s2.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(3.2), Inches(4.5))
     tf1 = tx1.text_frame
     tf1.word_wrap = True
-    tf1.paragraphs[0].text = "Relational databases power global banking, logistics, and healthcare."
+    tf1.paragraphs[0].text = "Relational databases underpin global banking, healthcare, and enterprise ERP."
     tf1.paragraphs[0].font.size = Pt(12)
     tf1.paragraphs[0].font.color.rgb = COLOR_DARK
     bullet1 = tf1.add_paragraph()
-    bullet1.text = "Translating natural language inquiries into executable SQL democratizes data analytics for non-technical domain practitioners.\n\nHowever, existing LLMs frequently fail when schemas involve compound foreign key paths, multi-table joins, and nested aggregations."
+    bullet1.text = "Natural language interfaces democratize analytics for non-technical practitioners.\n\nHowever, existing LLMs frequently collapse on enterprise schemas with compound foreign keys, multi-table joins, and nested subquery filters."
     bullet1.font.size = Pt(11)
     bullet1.font.color.rgb = COLOR_SLATE
 
-    c2 = add_card(s2, 4.8, 1.5, 3.6, 5.3, "2. Static Prompt Limitations")
+    c2 = add_card(s2, 4.8, 1.5, 3.6, 5.3, "2. Static Prompt Failure")
     tx2 = s2.shapes.add_textbox(Inches(5.0), Inches(2.1), Inches(3.2), Inches(4.5))
     tf2 = tx2.text_frame
     tf2.word_wrap = True
-    tf2.paragraphs[0].text = "Conventional Zero-Shot & Few-Shot prompting is non-differentiable and static."
+    tf2.paragraphs[0].text = "Conventional Zero-Shot and Few-Shot prompting is completely non-differentiable."
     tf2.paragraphs[0].font.size = Pt(12)
     tf2.paragraphs[0].font.color.rgb = COLOR_DARK
     bullet2 = tf2.add_paragraph()
-    bullet2.text = "When an LLM generates a flawed SQL query, static prompting provides zero mechanism to learn from execution failures.\n\nErrors such as schema hallucination, invalid join keys, and empty result sets go uncorrected, leading to complete pipeline breakdown."
+    bullet2.text = "When an LLM generates invalid SQL, static prompting provides zero mechanism to learn from execution errors.\n\nFlaws like schema hallucination, Cartesian products, and empty results go uncorrected, causing complete pipeline failure."
     bullet2.font.size = Pt(11)
     bullet2.font.color.rgb = COLOR_SLATE
 
-    c3 = add_card(s2, 8.8, 1.5, 3.7, 5.3, "3. The AxiomSQL Breakthrough")
+    c3 = add_card(s2, 8.8, 1.5, 3.7, 5.3, "3. AxiomSQL Innovation")
     tx3 = s2.shapes.add_textbox(Inches(9.0), Inches(2.1), Inches(3.3), Inches(4.5))
     tf3 = tx3.text_frame
     tf3.word_wrap = True
-    tf3.paragraphs[0].text = "End-to-End Differentiable Query Planning with TextGrad."
+    tf3.paragraphs[0].text = "Differentiable Query Planning with TextGrad and Execution Sandboxing."
     tf3.paragraphs[0].font.size = Pt(12)
     tf3.paragraphs[0].font.color.rgb = COLOR_DARK
     bullet3 = tf3.add_paragraph()
-    bullet3.text = "AxiomSQL models Text-to-SQL as a 2-stage computational graph (V_plan -> V_sql).\n\nRuntime database feedback is converted into a multi-objective execution loss vector and backpropagated as textual gradients, governed by an Adaptive Stopping Controller."
+    bullet3.text = "AxiomSQL models Text-to-SQL as a 2-stage computational graph (V_plan -> V_sql).\n\nDatabase feedback is mapped into an 8-component loss vector and backpropagated as textual gradients, governed by an Adaptive Stopping Controller."
     bullet3.font.size = Pt(11)
     bullet3.font.color.rgb = COLOR_SLATE
 
@@ -168,34 +170,33 @@ def build_presentation(output_path: str):
     # =========================================================================
     s3 = prs.slides.add_slide(blank_layout)
     set_slide_background(s3, COLOR_LIGHT_BG)
-    add_header(s3, "Research Motivation: Failure Modes in Existing Text-to-SQL")
+    add_header(s3, "Literature Gaps: Four Critical Text-to-SQL Failure Modes")
 
-    # 4 Quadrants
     q1 = add_card(s3, 0.8, 1.5, 5.6, 2.5, "A. Schema Hallucination")
     tq1 = s3.shapes.add_textbox(Inches(1.0), Inches(2.0), Inches(5.2), Inches(1.8))
     tq1.text_frame.word_wrap = True
-    tq1.text_frame.paragraphs[0].text = "Projecting non-existent column identifiers or referencing tables outside the active relational context (e.g. referencing customer.name instead of customer.full_name)."
+    tq1.text_frame.paragraphs[0].text = "Projecting non-existent column identifiers or referencing tables outside the active relational context (e.g., querying customer.name instead of customer.full_name)."
     tq1.text_frame.paragraphs[0].font.size = Pt(11)
     tq1.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
 
     q2 = add_card(s3, 6.8, 1.5, 5.7, 2.5, "B. The Empty-Set Trap (Silent Failure)")
     tq2 = s3.shapes.add_textbox(Inches(7.0), Inches(2.0), Inches(5.3), Inches(1.8))
     tq2.text_frame.word_wrap = True
-    tq2.text_frame.paragraphs[0].text = "The synthesized query compiles and executes cleanly with zero syntax errors, but returns 0 rows because WHERE conditions are over-constrained or string case mismatches occur."
+    tq2.text_frame.paragraphs[0].text = "The synthesized query compiles cleanly with zero syntax errors, but returns 0 rows because WHERE conditions are over-constrained or string literal casing does not match."
     tq2.text_frame.paragraphs[0].font.size = Pt(11)
     tq2.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
 
     q3 = add_card(s3, 0.8, 4.3, 5.6, 2.6, "C. Cyclic Oscillation in Self-Correction")
     tq3 = s3.shapes.add_textbox(Inches(1.0), Inches(4.8), Inches(5.2), Inches(1.9))
     tq3.text_frame.word_wrap = True
-    tq3.text_frame.paragraphs[0].text = "Naive self-reflection frameworks (e.g. Reflexion) repeatedly oscillate between flawed alternatives (e.g. flipping between INNER JOIN and LEFT JOIN without correcting the underlying join predicate)."
+    tq3.text_frame.paragraphs[0].text = "Naive self-reflection frameworks (e.g., Reflexion) repeatedly oscillate between flawed alternatives (e.g., flipping between INNER JOIN and LEFT JOIN without correcting the underlying join predicate)."
     tq3.text_frame.paragraphs[0].font.size = Pt(11)
     tq3.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
 
-    q4 = add_card(s3, 6.8, 4.3, 5.7, 2.6, "D. The Over-Iteration Degradation Phenomenon")
+    q4 = add_card(s3, 6.8, 4.3, 5.7, 2.6, "D. Over-Iteration Degradation Phenomenon")
     tq4 = s3.shapes.add_textbox(Inches(7.0), Inches(4.8), Inches(5.3), Inches(1.9))
     tq4.text_frame.word_wrap = True
-    tq4.text_frame.paragraphs[0].text = "Static iteration loops (e.g. unconditional K=4) degrade performance: LLMs mutate queries that were already correct in earlier iterations, dropping accuracy by -18.1%."
+    tq4.text_frame.paragraphs[0].text = "Static iteration loops (e.g., unconditional K=4) degrade performance: LLMs mutate queries that were already correct in earlier iterations, dropping accuracy by -18.1%."
     tq4.text_frame.paragraphs[0].font.size = Pt(11)
     tq4.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
 
@@ -244,7 +245,6 @@ def build_presentation(output_path: str):
     set_slide_background(s5, COLOR_LIGHT_BG)
     add_header(s5, "Mathematical Formulation: TextGrad in Relational Space")
 
-    # Left card: Graph and Chain Rule
     add_card(s5, 0.8, 1.5, 5.7, 5.3, "Differentiable Graph Operations")
     tx_math1 = s5.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
     tf_m1 = tx_math1.text_frame
@@ -259,7 +259,6 @@ def build_presentation(output_path: str):
     pm1.font.size = Pt(11)
     pm1.font.color.rgb = COLOR_SLATE
 
-    # Right card: Optimizer and Momentum
     add_card(s5, 6.8, 1.5, 5.7, 5.3, "Textual Gradient Descent with Momentum")
     tx_math2 = s5.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
     tf_m2 = tx_math2.text_frame
@@ -275,53 +274,164 @@ def build_presentation(output_path: str):
     pm2.font.color.rgb = COLOR_SLATE
 
     # =========================================================================
-    # SLIDE 6: Multi-Objective Execution Loss & Novelty G-Factors
+    # SLIDE 6: Novelty Factor: Adversarial Database Boundary Perturbation
     # =========================================================================
     s6 = prs.slides.add_slide(blank_layout)
     set_slide_background(s6, COLOR_LIGHT_BG)
-    add_header(s6, "Multi-Objective Loss Engine & Novelty Growth Factors")
+    add_header(s6, "Novelty Factor: Adversarial Database Boundary Perturbation (L_robust)")
 
-    # Top Formula Card
-    add_card(s6, 0.8, 1.5, 11.7, 1.4, "Multi-Objective Execution Loss Vector")
-    tx_loss = s6.shapes.add_textbox(Inches(1.0), Inches(2.0), Inches(11.3), Inches(0.8))
-    pl = tx_loss.text_frame.paragraphs[0]
-    pl.text = "L_exec = w1 * L_syntax + w2 * L_schema + w3 * L_cardinality + w4 * L_semantic + w5 * L_plan_cost + w6 * L_ast_cycle"
-    pl.font.size = Pt(13)
-    pl.font.bold = True
-    pl.font.color.rgb = COLOR_BLUE
+    add_card(s6, 0.8, 1.5, 5.7, 5.3, "In-Memory Adversarial DB Cloning", title_color=COLOR_AMBER)
+    tx_rob1 = s6.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    tf_r1 = tx_rob1.text_frame
+    tf_r1.word_wrap = True
+    tf_r1.paragraphs[0].text = "Edge-Case Zero/Null Database Mutation:"
+    tf_r1.paragraphs[0].font.size = Pt(12)
+    tf_r1.paragraphs[0].font.bold = True
+    tf_r1.paragraphs[0].font.color.rgb = COLOR_DARK
 
-    # 3 Detail Cards for Novelty Factors
-    c_n1 = add_card(s6, 0.8, 3.1, 3.7, 3.8, "Novelty Factor 1: Plan-Cost")
-    tn1 = s6.shapes.add_textbox(Inches(1.0), Inches(3.6), Inches(3.3), Inches(3.1))
-    tn1.text_frame.word_wrap = True
-    tn1.text_frame.paragraphs[0].text = "EXPLAIN QUERY PLAN Telemetry:\nEvaluates database execution plan. Penalizes unindexed full table scans (SCAN TABLE) and temporary B-Trees. Guides TextGrad to synthesize index-friendly performant SQL."
-    tn1.text_frame.paragraphs[0].font.size = Pt(10.5)
-    tn1.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
+    prb1 = tf_r1.add_paragraph()
+    prb1.text = "1. Zero-I/O Dynamic Database Cloning:\nClones the active SQLite database in RAM via iterdump() without altering baseline ground truth.\n\n2. Adversarial Value Inversion:\nMutates numeric columns to 0.00 and nullable string fields to NULL in selected sample rows.\n\n3. Stress Invariant Testing:\nEvaluates whether synthesized queries handle division-by-zero, coalesce null projections, and missing records gracefully."
+    prb1.font.size = Pt(11)
+    prb1.font.color.rgb = COLOR_SLATE
 
-    c_n2 = add_card(s6, 4.8, 3.1, 3.7, 3.8, "Novelty Factor 2: Cardinality")
-    tn2 = s6.shapes.add_textbox(Inches(5.0), Inches(3.6), Inches(3.3), Inches(3.1))
-    tn2.text_frame.word_wrap = True
-    tn2.text_frame.paragraphs[0].text = "Empty-Set Trap Regularization:\nDetects queries that compile cleanly but return 0 rows. Injects cardinality gradients instructing the optimizer to loosen over-constrained WHERE predicates or fix string literal casing."
-    tn2.text_frame.paragraphs[0].font.size = Pt(10.5)
-    tn2.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
+    add_card(s6, 6.8, 1.5, 5.7, 5.3, "Robustness Loss & Gradient Formulation", title_color=COLOR_AMBER)
+    tx_rob2 = s6.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    tf_r2 = tx_rob2.text_frame
+    tf_r2.word_wrap = True
+    tf_r2.paragraphs[0].text = "Formal Robustness Metric (L_robust):"
+    tf_r2.paragraphs[0].font.size = Pt(12)
+    tf_r2.paragraphs[0].font.bold = True
+    tf_r2.paragraphs[0].font.color.rgb = COLOR_DARK
 
-    c_n3 = add_card(s6, 8.8, 3.1, 3.7, 3.8, "Novelty Factor 3: AST Pruning")
-    tn3 = s6.shapes.add_textbox(Inches(9.0), Inches(3.6), Inches(3.3), Inches(3.1))
-    tn3.text_frame.word_wrap = True
-    tn3.text_frame.paragraphs[0].text = "AST Cycle & Product Detection:\nAnalyzes query AST to detect Cartesian products (comma-separated table lists without join conditions) and redundant self-join cycles, forcing clean ANSI JOIN syntax."
-    tn3.text_frame.paragraphs[0].font.size = Pt(10.5)
-    tn3.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
+    prb2 = tf_r2.add_paragraph()
+    prb2.text = "L_robust = 1.0 if Execute(Q, D_adv) crashes or yields NULL errors, else 0.0.\n\nTextual Gradient Feedback:\nIf Q fails under perturbed data:\nnabla_{V_sql} L_robust = 'CRITIQUE: Query crashed on zero/null mutation. Wrap numeric quotients in NULLIF(denominator, 0) and use COALESCE() on nullable projections.'\n\nResult:\nProduces enterprise-hardened SQL resistant to production data anomalies."
+    prb2.font.size = Pt(11)
+    prb2.font.color.rgb = COLOR_SLATE
 
     # =========================================================================
-    # SLIDE 7: Adaptive Stopping Controller: Dynamic Hyperparameter K
+    # SLIDE 7: Novelty Factor: Symbolic AST Tree Divergence Regularization
     # =========================================================================
     s7 = prs.slides.add_slide(blank_layout)
     set_slide_background(s7, COLOR_LIGHT_BG)
-    add_header(s7, "Adaptive Stopping Controller: Dynamic Reiteration Policy")
+    add_header(s7, "Novelty Factor: Symbolic AST Tree Divergence Regularization (L_ast_div)")
 
-    # 3 Policy Cards
-    cp1 = add_card(s7, 0.8, 1.5, 3.7, 5.3, "Policy 1: Execution-Gated (EGEE)")
-    tp1 = s7.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(3.3), Inches(4.5))
+    add_card(s7, 0.8, 1.5, 5.7, 5.3, "AST Structural Complexity Profiler", title_color=COLOR_PURPLE)
+    tx_ast1 = s7.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    tf_ast1 = tx_ast1.text_frame
+    tf_ast1.word_wrap = True
+    tf_ast1.paragraphs[0].text = "Structural AST Metrics:"
+    tf_ast1.paragraphs[0].font.size = Pt(12)
+    tf_ast1.paragraphs[0].font.bold = True
+    tf_ast1.paragraphs[0].font.color.rgb = COLOR_DARK
+
+    past1 = tf_ast1.add_paragraph()
+    past1.text = "1. Subquery Nesting Depth (d_nest):\nPenalizes gratuitous recursive SELECT nesting that degrades query planner performance.\n\n2. Join Complexity Depth (d_join):\nMonitors the count and type of join clauses to prevent redundant cross joins.\n\n3. Projection Bloat Ratio (rho_proj):\nMeasures the ratio of projected columns to expected entity attributes, flagging SELECT * over-fetching."
+    past1.font.size = Pt(11)
+    past1.font.color.rgb = COLOR_SLATE
+
+    add_card(s7, 6.8, 1.5, 5.7, 5.3, "Tree Divergence Regularization Metric", title_color=COLOR_PURPLE)
+    tx_ast2 = s7.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    tf_ast2 = tx_ast2.text_frame
+    tf_ast2.word_wrap = True
+    tf_ast2.paragraphs[0].text = "Inter-Iteration Structural Divergence:"
+    tf_ast2.paragraphs[0].font.size = Pt(12)
+    tf_ast2.paragraphs[0].font.bold = True
+    tf_ast2.paragraphs[0].font.color.rgb = COLOR_DARK
+
+    past2 = tf_ast2.add_paragraph()
+    past2.text = "delta_AST(Q_t, Q_{t-1}) = |d_nest(t) - d_nest(t-1)| + |d_join(t) - d_join(t-1)|\n\nChaotic Mutation Prevention:\nLarge jumps in AST structure indicate erratic LLM hallucinations rather than measured optimization.\n\nL_ast_div Penalization:\nPenalizes excessive syntax re-architecting, forcing TextGrad to converge smoothly toward the global schema optimum."
+    past2.font.size = Pt(11)
+    past2.font.color.rgb = COLOR_SLATE
+
+    # =========================================================================
+    # SLIDE 8: Novelty Factor: Textual Learning Rate Annealing Schedule
+    # =========================================================================
+    s8 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s8, COLOR_LIGHT_BG)
+    add_header(s8, "Novelty Factor: Textual Learning Rate Annealing Schedule (eta_t)")
+
+    add_card(s8, 0.8, 1.5, 5.7, 5.3, "Cosine Annealing Schedule Formula", title_color=COLOR_TEAL)
+    tx_ann1 = s8.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    tf_ann1 = tx_ann1.text_frame
+    tf_ann1.word_wrap = True
+    tf_ann1.paragraphs[0].text = "Dynamic Temperature Scheduling:"
+    tf_ann1.paragraphs[0].font.size = Pt(12)
+    tf_ann1.paragraphs[0].font.bold = True
+    tf_ann1.paragraphs[0].font.color.rgb = COLOR_DARK
+
+    pann1 = tf_ann1.add_paragraph()
+    pann1.text = "Mathematical Formulation:\neta_t = eta_min + 0.5 * (eta_0 - eta_min) * (1 + cos(pi * t / K_max))\n\nDefault Hyperparameters:\n- Initial Learning Rate: eta_0 = 0.50 (Exploration)\n- Final Learning Rate: eta_min = 0.15 (Fine-tuning Exploitation)\n\nAnalogy to Continuous SGD:\nSimulates learning rate decay in continuous deep learning within prompt-based textual optimization."
+    pann1.font.size = Pt(11)
+    pann1.font.color.rgb = COLOR_SLATE
+
+    add_card(s8, 6.8, 1.5, 5.7, 5.3, "Exploration vs Exploitation Dynamics", title_color=COLOR_TEAL)
+    tx_ann2 = s8.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    tf_ann2 = tx_ann2.text_frame
+    tf_ann2.word_wrap = True
+    tf_ann2.paragraphs[0].text = "Optimization Trajectory Stability:"
+    tf_ann2.paragraphs[0].font.size = Pt(12)
+    tf_ann2.paragraphs[0].font.bold = True
+    tf_ann2.paragraphs[0].font.color.rgb = COLOR_DARK
+
+    pann2 = tf_ann2.add_paragraph()
+    pann2.text = "Early Iterations (t=1, 2):\nHigh temperature (T ~ 0.50) encourages diverse query plan hypotheses and exploratory join exploration.\n\nLate Iterations (t >= 3):\nLow temperature (T ~ 0.15) confines prompt mutations to surgical identifier fixes, preventing destructive query rewrites.\n\nEmpirical Benefit:\nEliminates late-stage query corruption and stabilizes textual gradient convergence."
+    pann2.font.size = Pt(11)
+    pann2.font.color.rgb = COLOR_SLATE
+
+    # =========================================================================
+    # SLIDE 9: Multi-Objective Execution Loss Engine
+    # =========================================================================
+    s9 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s9, COLOR_LIGHT_BG)
+    add_header(s9, "Multi-Objective Execution Loss Engine: 8-Component Vector")
+
+    # Formula Card
+    add_card(s9, 0.8, 1.5, 11.7, 1.3, "Unified Normalized Multi-Objective Loss Formulation")
+    tx_f9 = s9.shapes.add_textbox(Inches(1.0), Inches(1.95), Inches(11.3), Inches(0.8))
+    pf9 = tx_f9.text_frame.paragraphs[0]
+    pf9.text = "L_exec = 0.30*L_syn + 0.15*L_sch + 0.15*L_card + 0.15*L_sem + 0.08*L_cost + 0.07*L_cyc + 0.05*L_ast + 0.05*L_rob"
+    pf9.font.size = Pt(12.5)
+    pf9.font.bold = True
+    pf9.font.color.rgb = COLOR_BLUE
+
+    # 4 Components in 2 Rows
+    c_m1 = add_card(s9, 0.8, 3.0, 2.7, 3.9, "1. Syntax & Schema")
+    tm1 = s9.shapes.add_textbox(Inches(0.95), Inches(3.5), Inches(2.4), Inches(3.2))
+    tm1.text_frame.word_wrap = True
+    tm1.text_frame.paragraphs[0].text = "L_syntax (0.30):\nImmediate 1.0 penalty on database compile exceptions.\n\nL_schema (0.15):\nPenalizes hallucinated column/table names outside active DDL."
+    tm1.text_frame.paragraphs[0].font.size = Pt(10)
+    tm1.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
+
+    c_m2 = add_card(s9, 3.8, 3.0, 2.7, 3.9, "2. Cardinality & Semantic")
+    tm2 = s9.shapes.add_textbox(Inches(3.95), Inches(3.5), Inches(2.4), Inches(3.2))
+    tm2.text_frame.word_wrap = True
+    tm2.text_frame.paragraphs[0].text = "L_cardinality (0.15):\nDetects Empty-Set Trap when query compiles but returns 0 rows.\n\nL_semantic (0.15):\nJaccard row discrepancy against gold benchmark probes."
+    tm2.text_frame.paragraphs[0].font.size = Pt(10)
+    tm2.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
+
+    c_m3 = add_card(s9, 6.8, 3.0, 2.7, 3.9, "3. EXPLAIN & Cycles")
+    tm3 = s9.shapes.add_textbox(Inches(6.95), Inches(3.5), Inches(2.4), Inches(3.2))
+    tm3.text_frame.word_wrap = True
+    tm3.text_frame.paragraphs[0].text = "L_plan_cost (0.08):\nPenalizes unindexed SCAN TABLE and temporary B-Trees.\n\nL_ast_cycles (0.07):\nDetects unjoined Cartesian products and self-join cycles."
+    tm3.text_frame.paragraphs[0].font.size = Pt(10)
+    tm3.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
+
+    c_m4 = add_card(s9, 9.8, 3.0, 2.7, 3.9, "4. AST Div & Robustness")
+    tm4 = s9.shapes.add_textbox(Inches(9.95), Inches(3.5), Inches(2.4), Inches(3.2))
+    tm4.text_frame.word_wrap = True
+    tm4.text_frame.paragraphs[0].text = "L_ast_div (0.05):\nPenalizes erratic structural jumps between iterations.\n\nL_robust (0.05):\nIn-memory adversarial clone zero/null failure penalty."
+    tm4.text_frame.paragraphs[0].font.size = Pt(10)
+    tm4.text_frame.paragraphs[0].font.color.rgb = COLOR_SLATE
+
+    # =========================================================================
+    # SLIDE 10: Adaptive Stopping Controller: Dynamic Hyperparameter K
+    # =========================================================================
+    s10 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s10, COLOR_LIGHT_BG)
+    add_header(s10, "Adaptive Stopping Controller: Dynamic Reiteration Policies")
+
+    cp1 = add_card(s10, 0.8, 1.5, 3.7, 5.3, "Policy 1: Execution-Gated (EGEE)")
+    tp1 = s10.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(3.3), Inches(4.5))
     tp1.text_frame.word_wrap = True
     tp1.text_frame.paragraphs[0].text = "Early Exit on Clean Execution"
     tp1.text_frame.paragraphs[0].font.size = Pt(12)
@@ -332,8 +442,8 @@ def build_presentation(output_path: str):
     bp1.font.size = Pt(10.5)
     bp1.font.color.rgb = COLOR_SLATE
 
-    cp2 = add_card(s7, 4.8, 1.5, 3.7, 5.3, "Policy 2: Gradient Convergence (TGC)")
-    tp2 = s7.shapes.add_textbox(Inches(5.0), Inches(2.1), Inches(3.3), Inches(4.5))
+    cp2 = add_card(s10, 4.8, 1.5, 3.7, 5.3, "Policy 2: Gradient Convergence (TGC)")
+    tp2 = s10.shapes.add_textbox(Inches(5.0), Inches(2.1), Inches(3.3), Inches(4.5))
     tp2.text_frame.word_wrap = True
     tp2.text_frame.paragraphs[0].text = "Semantic Energy Convergence"
     tp2.text_frame.paragraphs[0].font.size = Pt(12)
@@ -344,8 +454,8 @@ def build_presentation(output_path: str):
     bp2.font.size = Pt(10.5)
     bp2.font.color.rgb = COLOR_SLATE
 
-    cp3 = add_card(s7, 8.8, 1.5, 3.7, 5.3, "Policy 3: Pareto Utility (PUS)")
-    tp3 = s7.shapes.add_textbox(Inches(9.0), Inches(2.1), Inches(3.3), Inches(4.5))
+    cp3 = add_card(s10, 8.8, 1.5, 3.7, 5.3, "Policy 3: Pareto Utility (PUS)")
+    tp3 = s10.shapes.add_textbox(Inches(9.0), Inches(2.1), Inches(3.3), Inches(4.5))
     tp3.text_frame.word_wrap = True
     tp3.text_frame.paragraphs[0].text = "Marginal Cost-Utility Tradeoff"
     tp3.text_frame.paragraphs[0].font.size = Pt(12)
@@ -357,16 +467,14 @@ def build_presentation(output_path: str):
     bp3.font.color.rgb = COLOR_SLATE
 
     # =========================================================================
-    # SLIDE 8: Benchmark Evaluation & Empirical Results
+    # SLIDE 11: Benchmark Evaluation & Empirical Results
     # =========================================================================
-    s8 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s8, COLOR_LIGHT_BG)
-    add_header(s8, "Empirical Benchmark Results (Spider & BIRD Standards)")
+    s11 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s11, COLOR_LIGHT_BG)
+    add_header(s11, "Empirical Benchmark Results (Spider & BIRD Standards)")
 
-    # Summary Table Card
-    add_card(s8, 0.8, 1.5, 11.7, 5.4, "Cross-Domain Evaluation Across 4 Complexity Tiers")
-
-    tx_table = s8.shapes.add_textbox(Inches(1.1), Inches(2.1), Inches(11.1), Inches(4.5))
+    add_card(s11, 0.8, 1.5, 11.7, 5.4, "Cross-Domain Evaluation Across 4 Complexity Tiers")
+    tx_table = s11.shapes.add_textbox(Inches(1.1), Inches(2.1), Inches(11.1), Inches(4.5))
     tf_tbl = tx_table.text_frame
     tf_tbl.word_wrap = True
 
@@ -398,15 +506,14 @@ def build_presentation(output_path: str):
     pt3.font.color.rgb = COLOR_SLATE
 
     # =========================================================================
-    # SLIDE 9: Ablation Study: The Over-Iteration Degradation Phenomenon
+    # SLIDE 12: Ablation Study: Over-Iteration Degradation
     # =========================================================================
-    s9 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s9, COLOR_LIGHT_BG)
-    add_header(s9, "Ablation Study: Over-Iteration Degradation")
+    s12 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s12, COLOR_LIGHT_BG)
+    add_header(s12, "Ablation Study: Over-Iteration Degradation Phenomenon")
 
-    # Left card: The Discovery
-    add_card(s9, 0.8, 1.5, 5.7, 5.3, "The Over-Iteration Paradox")
-    tx_ab1 = s9.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    add_card(s12, 0.8, 1.5, 5.7, 5.3, "The Over-Iteration Paradox")
+    tx_ab1 = s12.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
     tf_ab1 = tx_ab1.text_frame
     tf_ab1.word_wrap = True
     tf_ab1.paragraphs[0].text = "Why Do Fixed Iteration Loops Degrade?"
@@ -415,13 +522,12 @@ def build_presentation(output_path: str):
     tf_ab1.paragraphs[0].font.color.rgb = COLOR_DARK
 
     pab1 = tf_ab1.add_paragraph()
-    pab1.text = "When running prompt refinement with a fixed budget (e.g. K=4 unconditionally), execution accuracy drops from 63.6% down to 45.5%.\n\nRoot Cause Analysis:\nWhen an LLM produces an accurate query on iteration 1 or 2, forcing it to keep refining prompts leads to 'hallucinatory overthinking'. The model invents unnecessary changes to already-correct queries, breaking joins and aggregations."
+    pab1.text = "When running prompt refinement with a fixed budget (e.g., K=4 unconditionally), execution accuracy drops from 63.6% down to 45.5%.\n\nRoot Cause Analysis:\nWhen an LLM produces an accurate query on iteration 1 or 2, forcing it to keep refining prompts leads to 'hallucinatory overthinking'. The model invents unnecessary changes to already-correct queries, breaking joins and aggregations."
     pab1.font.size = Pt(11)
     pab1.font.color.rgb = COLOR_SLATE
 
-    # Right card: The Adaptive Solution
-    add_card(s9, 6.8, 1.5, 5.7, 5.3, "How AxiomSQL Solves It")
-    tx_ab2 = s9.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    add_card(s12, 6.8, 1.5, 5.7, 5.3, "How AxiomSQL Solves It")
+    tx_ab2 = s12.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
     tf_ab2 = tx_ab2.text_frame
     tf_ab2.word_wrap = True
     tf_ab2.paragraphs[0].text = "Adaptive Stopping Locks in Optimal Solutions"
@@ -435,14 +541,14 @@ def build_presentation(output_path: str):
     pab2.font.color.rgb = COLOR_TEAL
 
     # =========================================================================
-    # SLIDE 10: Enterprise Studio: Node.js Architecture & Telemetry
+    # SLIDE 13: Enterprise Studio: Node.js Architecture & Telemetry
     # =========================================================================
-    s10 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s10, COLOR_LIGHT_BG)
-    add_header(s10, "System Implementation: Enterprise Node.js Studio")
+    s13 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s13, COLOR_LIGHT_BG)
+    add_header(s13, "System Implementation: Enterprise Node.js Studio")
 
-    add_card(s10, 0.8, 1.5, 5.7, 5.3, "Decoupled Node.js Architecture")
-    tx_ui1 = s10.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    add_card(s13, 0.8, 1.5, 5.7, 5.3, "Decoupled Node.js Architecture")
+    tx_ui1 = s13.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
     tf_ui1 = tx_ui1.text_frame
     tf_ui1.word_wrap = True
     tf_ui1.paragraphs[0].text = "Production Full-Stack Architecture:"
@@ -455,8 +561,8 @@ def build_presentation(output_path: str):
     pui1.font.size = Pt(11)
     pui1.font.color.rgb = COLOR_SLATE
 
-    add_card(s10, 6.8, 1.5, 5.7, 5.3, "Studio Capabilities & Features")
-    tx_ui2 = s10.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
+    add_card(s13, 6.8, 1.5, 5.7, 5.3, "Studio Capabilities & Features")
+    tx_ui2 = s13.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
     tf_ui2 = tx_ui2.text_frame
     tf_ui2.word_wrap = True
     tf_ui2.paragraphs[0].text = "Live Interactive Studio Highlights:"
@@ -465,78 +571,45 @@ def build_presentation(output_path: str):
     tf_ui2.paragraphs[0].font.color.rgb = COLOR_DARK
 
     pui2 = tf_ui2.add_paragraph()
-    pui2.text = "1. Interactive Query Studio:\n   - Step-by-step accordion with textual gradient critiques.\n   - EXPLAIN query plan inspector for scan-cost telemetry.\n\n2. Computational Graph Viewer:\n   - Unified diff viewer showing query evolution from Iter 1 to final.\n   - Real-time loss & gradient energy convergence curves.\n\n3. Database Schema Tree & SQL Scratchpad:\n   - Direct sandboxed SQL execution against populated schemas."
+    pui2.text = "1. Interactive Query Studio:\n   - Step-by-step accordion with textual gradient critiques.\n   - EXPLAIN query plan inspector for scan-cost telemetry.\n   - AST Divergence & Adversarial Robustness metrics.\n\n2. Computational Graph Viewer:\n   - Unified diff viewer showing query evolution from Iter 1 to final.\n   - Real-time loss & gradient energy convergence curves.\n\n3. Database Schema Tree & SQL Scratchpad:\n   - Direct sandboxed SQL execution against populated schemas."
     pui2.font.size = Pt(11)
     pui2.font.color.rgb = COLOR_SLATE
 
     # =========================================================================
-    # SLIDE 11: Placement, Resume & Interview Value
+    # SLIDE 14: Placement, Resume & Interview Value
     # =========================================================================
-    s11 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s11, COLOR_LIGHT_BG)
-    add_header(s11, "Career Impact: Placement & Technical Interview Value")
-
-    c_r1 = add_card(s11, 0.8, 1.5, 5.7, 5.3, "Resume Bullet Points")
-    tr1 = s11.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.5))
-    tr1.text_frame.word_wrap = True
-    tr1.text_frame.paragraphs[0].text = "Demonstrable Engineering & Research Impact:"
-    tr1.text_frame.paragraphs[0].font.size = Pt(12)
-    tr1.text_frame.paragraphs[0].font.bold = True
-    tr1.text_frame.paragraphs[0].font.color.rgb = COLOR_DARK
-
-    pr1 = tr1.text_frame.add_paragraph()
-    pr1.text = "Bullet 1 (AI Systems Engineer):\nArchitected AxiomSQL, an end-to-end differentiable computational graph for automated Text-to-SQL planning using TextGrad backpropagation over SQLite sandboxes.\n\nBullet 2 (Algorithmic Innovation):\nFormulated an Adaptive Stopping Controller with Execution-Gated Early Exit (EGEE) and Pareto Utility, achieving +18.1% higher execution accuracy and 47.8% compute reduction.\n\nBullet 3 (Full-Stack Production):\nBuilt an enterprise Node.js studio with real-time gradient trajectory visualization and automated Spider/BIRD benchmark suites."
-    pr1.font.size = Pt(10)
-    pr1.font.color.rgb = COLOR_SLATE
-
-    c_r2 = add_card(s11, 6.8, 1.5, 5.7, 5.3, "Interview Talking Points")
-    tr2 = s11.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.5))
-    tr2.text_frame.word_wrap = True
-    tr2.text_frame.paragraphs[0].text = "Core Technical Discussion Themes:"
-    tr2.text_frame.paragraphs[0].font.size = Pt(12)
-    tr2.text_frame.paragraphs[0].font.bold = True
-    tr2.text_frame.paragraphs[0].font.color.rgb = COLOR_DARK
-
-    pr2 = tr2.text_frame.add_paragraph()
-    pr2.text = "1. Why Computational Graphs for LLMs?\nExplain how TextGrad computes textual gradients using natural language critiques, allowing chain-rule optimization across multi-stage prompts.\n\n2. Overcoming the Empty-Set Trap:\nDiscuss how database execution gives ground-truth reward signals, and how cardinality loss prevents silent over-filtering.\n\n3. Dynamic Hyperparameter Control:\nDiscuss how adaptive stopping solves the over-iteration degradation problem in agentic workflows."
-    pr2.font.size = Pt(10)
-    pr2.font.color.rgb = COLOR_SLATE
-
-    # =========================================================================
-    # SLIDE 12: Conclusion & Future Research Directions
-    # =========================================================================
-    s12 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s12, COLOR_NAVY)
+    s14 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s14, COLOR_NAVY)
 
     # Accent bar
-    bar12 = s12.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.2), Inches(1.5), Inches(0.15), Inches(4.5))
-    bar12.fill.solid()
-    bar12.fill.fore_color.rgb = COLOR_TEAL
-    bar12.line.fill.background()
+    bar14 = s14.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.2), Inches(1.5), Inches(0.15), Inches(4.8))
+    bar14.fill.solid()
+    bar14.fill.fore_color.rgb = COLOR_TEAL
+    bar14.line.fill.background()
 
-    tx_c = s12.shapes.add_textbox(Inches(1.5), Inches(1.4), Inches(10.5), Inches(4.8))
+    tx_c = s14.shapes.add_textbox(Inches(1.5), Inches(1.4), Inches(10.8), Inches(5.1))
     tf_c = tx_c.text_frame
     tf_c.word_wrap = True
 
     pc1 = tf_c.paragraphs[0]
-    pc1.text = "Conclusion & Research Horizons"
-    pc1.font.size = Pt(24)
+    pc1.text = "Placement Impact & Technical Interview Mastery"
+    pc1.font.size = Pt(23)
     pc1.font.bold = True
     pc1.font.color.rgb = COLOR_WHITE
 
     pc2 = tf_c.add_paragraph()
-    pc2.text = "\nSummary of Contributions:\n- Formulated Text-to-SQL as an end-to-end differentiable computational graph optimized with TextGrad.\n- Introduced Multi-Objective Execution Loss incorporating EXPLAIN plan-cost and cardinality penalties.\n- Solved the over-iteration degradation problem via an Adaptive Stopping Controller.\n- Delivered a production Node.js enterprise studio and complete PyTest validation suite."
-    pc2.font.size = Pt(12)
+    pc2.text = "\nCore Resume Bullets:\n- Architected AxiomSQL: Differentiable 2-stage computational graph (V_plan -> V_sql) using TextGrad automatic differentiation over SQLite database sandboxes.\n- Formulated 8-Component Execution Loss: Integrated EXPLAIN plan cost, cardinality penalties, AST divergence, and adversarial database boundary mutations.\n- Engineered Adaptive Stopping Controller: Introduced EGEE, TGC, and Pareto utility stopping policies, improving execution accuracy by +18.1% while slashing compute by 47.8%.\n- Production Enterprise Studio: Full-stack Node.js + Express web studio with real-time gradient telemetry, schema explorer, and automated test suite (16/16 PyTest passing)."
+    pc2.font.size = Pt(11)
     pc2.font.color.rgb = RGBColor(226, 232, 240)
 
     pc3 = tf_c.add_paragraph()
-    pc3.text = "\nFuture Horizons:\n- Automatic DDL Index Synthesis: Automatically creating SQLite indices based on plan-cost gradients.\n- Cross-Dialect Generalization: Extending differentiation to PostgreSQL, DuckDB, and Snowflake.\n- Multi-Agent Consensus: Adversarial debate between Schema Critic and Synthesizer agents."
-    pc3.font.size = Pt(12)
+    pc3.text = "\nInterview Discussion Highlights:\n1. Why Computational Graphs for LLMs? Explain natural language gradient backpropagation and upstream plan attribution.\n2. Solving Over-Iteration: Articulate the empirical discovery of degradation at fixed K=4 and how adaptive stopping solves it.\n3. Robustness & Verification: Describe in-memory adversarial zero/null mutation testing and AST divergence tracking."
+    pc3.font.size = Pt(10.5)
     pc3.font.color.rgb = RGBColor(148, 163, 184)
 
     pc4 = tf_c.add_paragraph()
-    pc4.text = "\nGitHub Repository: https://github.com/DharshiniPES/axiom-sql-textgrad\nReady for academic publication and enterprise production."
-    pc4.font.size = Pt(12)
+    pc4.text = "\nGitHub: https://github.com/DharshiniPES/axiom-sql-textgrad | Ready for academic publication and elite technical placements."
+    pc4.font.size = Pt(11)
     pc4.font.bold = True
     pc4.font.color.rgb = RGBColor(56, 189, 248)
 

@@ -24,17 +24,20 @@ class ExecutionLossOutput:
 class ExecutionLoss:
     """
     Computes differentiable multi-objective execution loss:
-    L_exec = w_syntax * L_syntax + w_schema * L_schema + w_card * L_cardinality + w_sem * L_semantic + w_cost * L_cost + w_ast * L_ast
+    L_exec = w_syntax * L_syntax + w_schema * L_schema + w_card * L_cardinality + w_sem * L_semantic 
+             + w_cost * L_cost + w_ast * L_ast + w_div * L_div + w_rob * L_rob
     """
 
     def __init__(
         self,
-        weight_syntax: float = 0.35,
-        weight_schema: float = 0.20,
+        weight_syntax: float = 0.30,
+        weight_schema: float = 0.15,
         weight_cardinality: float = 0.15,
         weight_semantic: float = 0.20,
-        weight_plan_cost: float = 0.05,
-        weight_ast_cycle: float = 0.05,
+        weight_plan_cost: float = 0.08,
+        weight_ast_cycle: float = 0.04,
+        weight_ast_div: float = 0.04,
+        weight_robustness: float = 0.04,
     ):
         self.w_syntax = weight_syntax
         self.w_schema = weight_schema
@@ -42,6 +45,8 @@ class ExecutionLoss:
         self.w_semantic = weight_semantic
         self.w_plan_cost = weight_plan_cost
         self.w_ast_cycle = weight_ast_cycle
+        self.w_ast_div = weight_ast_div
+        self.w_robustness = weight_robustness
 
     def compute(
         self,
@@ -49,6 +54,7 @@ class ExecutionLoss:
         question: str,
         schema_summary: str,
         gold_result: Optional[ExecutionResult] = None,
+        adversarial_sandbox: Optional[Any] = None,
     ) -> ExecutionLossOutput:
         """Evaluates predicted SQL execution result against database and semantic objectives."""
         loss_components: Dict[str, float] = {}
@@ -115,6 +121,18 @@ class ExecutionLoss:
         else:
             loss_components["ast_cycle"] = 0.0
 
+        # 7. Novelty Factor: Symbolic AST Tree Divergence Regularization
+        loss_components["ast_div"] = SQLParser.calculate_ast_divergence(pred_result.query)
+
+        # 8. Novelty Factor: Adversarial Database Boundary Perturbation Testing (Robustness)
+        loss_components["robustness"] = 0.0
+        if pred_result.success and adversarial_sandbox is not None:
+            adv_res = adversarial_sandbox.execute_query(pred_result.query)
+            if not adv_res.success:
+                loss_components["robustness"] = 0.6
+            elif adv_res.row_count == 0 and pred_result.row_count > 0:
+                loss_components["robustness"] = 0.2
+
         # Weighted aggregate scalar loss
         scalar_loss = (
             self.w_syntax * loss_components["syntax"]
@@ -123,6 +141,8 @@ class ExecutionLoss:
             + self.w_semantic * loss_components["semantic"]
             + self.w_plan_cost * loss_components["plan_cost"]
             + self.w_ast_cycle * loss_components["ast_cycle"]
+            + self.w_ast_div * loss_components["ast_div"]
+            + self.w_robustness * loss_components["robustness"]
         )
         scalar_loss = min(1.0, max(0.0, scalar_loss))
 
@@ -181,6 +201,10 @@ class ExecutionLoss:
             lines.append("EXECUTION PLAN WARNING: Query triggers unindexed full-table scans or temporary B-Tree structures. Optimize join keys and indexed column lookups.")
         if loss_components.get("ast_cycle", 0.0) > 0.0:
             lines.append("AST STRUCTURE WARNING: Comma-separated product detected in FROM clause. Use explicit JOIN syntax with ON predicates.")
+        if loss_components.get("ast_div", 0.0) > 0.2:
+            lines.append("AST COMPLEXITY WARNING: Query exhibits redundant subquery nesting or join bloat. Refactor into direct canonical join projections.")
+        if loss_components.get("robustness", 0.0) > 0.2:
+            lines.append("ROBUSTNESS WARNING: Query experienced degradation or output collapse under adversarial boundary perturbation (zeros/nulls). Ensure NULL-safe aggregation.")
 
         lines.append(f"Loss Scalar: {sum(loss_components.values()):.2f} (Error Category: {error_category})")
         return "\n".join(lines)

@@ -105,13 +105,14 @@ Let $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ be a directed acyclic graph where
    Where $V_{\text{sql}}$ generates concrete, dialect-compliant SQLite code.
 
 ### 2.2 Multi-Objective Execution Loss Engine ($\mathcal{L}_{\text{exec}}$)
-Unlike natural language tasks where text loss is computed via token perplexity or string similarity, relational database execution operates in discrete result space. We define the execution loss vector:
+Unlike natural language tasks where text loss is computed via token perplexity or string similarity, relational database execution operates in discrete result space. We define the execution loss vector across eight normalized objective components:
 
-$$\vec{\mathcal{L}}_{\text{exec}} = \langle \mathcal{L}_{\text{syntax}}, \mathcal{L}_{\text{schema}}, \mathcal{L}_{\text{cardinality}}, \mathcal{L}_{\text{semantic}} \rangle$$
+$$\vec{\mathcal{L}}_{\text{exec}} = \langle \mathcal{L}_{\text{syntax}}, \mathcal{L}_{\text{schema}}, \mathcal{L}_{\text{cardinality}}, \mathcal{L}_{\text{semantic}}, \mathcal{L}_{\text{plan\_cost}}, \mathcal{L}_{\text{ast\_cycles}}, \mathcal{L}_{\text{ast\_div}}, \mathcal{L}_{\text{robust}} \rangle$$
 
-The scalar loss is formulated as a convex combination:
-$$\mathcal{L}_{\text{exec}} = w_1 \mathcal{L}_{\text{syntax}} + w_2 \mathcal{L}_{\text{schema}} + w_3 \mathcal{L}_{\text{cardinality}} + w_4 \mathcal{L}_{\text{semantic}}$$
-subject to $\sum_{i=1}^4 w_i = 1, w_i \ge 0$.
+The scalar loss is formulated as a normalized convex combination:
+$$\mathcal{L}_{\text{exec}} = \sum_{i=1}^8 w_i \mathcal{L}_i \quad \text{subject to} \quad \sum_{i=1}^8 w_i = 1.00, \quad w_i \ge 0$$
+With calibrated enterprise weights:
+$w = \langle 0.30, 0.15, 0.15, 0.15, 0.08, 0.07, 0.05, 0.05 \rangle$.
 
 - **Syntax & Runtime Loss ($\mathcal{L}_{\text{syntax}} \in \{0, 1\}$):**
   $$\mathcal{L}_{\text{syntax}} = \begin{cases} 0 & \text{if query compiles and executes cleanly} \\ 1 & \text{if database engine raises an exception} \end{cases}$$
@@ -123,8 +124,39 @@ subject to $\sum_{i=1}^4 w_i = 1, w_i \ge 0$.
 - **Semantic Consistency Loss ($\mathcal{L}_{\text{semantic}} \in [0, 1]$):**
   When evaluated against benchmark gold probes $R(Q^*)$ or dual-consistency verification:
   $$\mathcal{L}_{\text{semantic}} = 1 - \text{Jaccard}(R(Q), R(Q^*))$$
+- **EXPLAIN Plan Cost Loss ($\mathcal{L}_{\text{plan\_cost}} \in [0, 1]$):**
+  Evaluates the database query execution plan via SQLite `EXPLAIN QUERY PLAN`. Penalizes unindexed sequential scans (`SCAN TABLE`) and temporary B-tree creation for sort operations (`USE TEMP B-TREE`).
+- **AST Cycle & Cartesian Loss ($\mathcal{L}_{\text{ast\_cycles}} \in [0, 1]$):**
+  Detects comma-separated table lists lacking explicit join conditions and circular self-joins.
+- **Symbolic AST Tree Divergence Regularization ($\mathcal{L}_{\text{ast\_div}} \in [0, 1]$):**
+  Quantifies structural variance across iterations:
+  $$\Delta_{\text{AST}}(Q_t, Q_{t-1}) = |d_{\text{nest}}(t) - d_{\text{nest}}(t-1)| + |d_{\text{join}}(t) - d_{\text{join}}(t-1)|$$
+  Penalizes chaotic syntax restructuring, enforcing smooth convergence toward the target schema.
+- **Adversarial Database Boundary Robustness ($\mathcal{L}_{\text{robust}} \in \{0, 1\}$):**
+  Tests candidate queries on an in-memory adversarial clone $\mathcal{D}_{\text{adv}}$ featuring zeroed numeric values and nullified descriptive attributes. Penalizes queries vulnerable to division-by-zero or missing null handling.
 
-### 2.3 Upstream Textual Gradient Backpropagation
+### 2.3 Adversarial Database Boundary Perturbation Testing
+To ensure synthesized SQL queries are resilient against edge cases and dirty production data, AxiomSQL introduces an in-memory adversarial database cloner:
+1. **Zero-I/O Replication:** Utilizes SQLite `iterdump()` to construct an isolated, in-memory clone $\mathcal{D}_{\text{adv}}$ of the live database in $< 1\text{ms}$.
+2. **Boundary Value Injection:** Automatically mutates a subset of rows by zeroing numeric balances/prices and replacing nullable foreign key strings with `NULL`.
+3. **Robustness Gradient:** If $Q_t$ throws an unhandled exception or returns corrupt invariants on $\mathcal{D}_{\text{adv}}$, a specific textual gradient critique is generated:
+   $$\nabla_{V_{\text{sql}}} \mathcal{L}_{\text{robust}} = \text{"CRITIQUE: Query failed on adversarial zero/null state. Protect quotients with NULLIF() and wrap projections with COALESCE()."}$$
+
+### 2.4 Symbolic AST Tree Divergence & Complexity Profiling
+Rather than treating SQL purely as unstructured text strings, AxiomSQL extracts the Abstract Syntax Tree (AST) to evaluate structural metrics:
+- **Subquery Nesting Depth ($d_{\text{nest}}$):** Detects excessive subquery wrapping.
+- **Join Complexity Depth ($d_{\text{join}}$):** Quantifies multi-table join chains.
+- **Projection Bloat Ratio ($\rho_{\text{proj}}$):** Penalizes `SELECT *` over-projection.
+
+Tracking the tree divergence metric $\Delta_{\text{AST}}(Q_t, Q_{t-1})$ prevents the LLM from making erratic, destructive leaps between iterations when small surgical adjustments are needed.
+
+### 2.5 Textual Learning Rate Annealing Schedule
+Analogous to continuous learning rate decay in stochastic gradient descent (SGD), AxiomSQL introduces a Textual Learning Rate Annealing schedule $\eta_t$:
+$$\eta_t = \eta_{\min} + \frac{1}{2}(\eta_0 - \eta_{\min})\left(1 + \cos\left(\frac{\pi t}{K_{\max}}\right)\right)$$
+- At early iterations ($t \in \{1, 2\}$), high temperature $\eta_t \approx 0.50$ encourages broad relational exploration and diverse schema joins.
+- At late iterations ($t \ge 3$), low temperature $\eta_t \approx 0.15$ forces the LLM to restrict prompt modifications to surgical identifier corrections, preventing catastrophic late-stage query corruption.
+
+### 2.6 Upstream Textual Gradient Backpropagation
 In accordance with TextGrad mechanics, the loss engine generates a structured critique prompt $\mathcal{C}(\vec{\mathcal{L}}_{\text{exec}})$. Backward automatic differentiation proceeds in reverse topological order:
 
 **Step 1: SQL Gradient:**
@@ -134,9 +166,9 @@ $$\nabla_{V_{\text{sql}}} \mathcal{L}_{\text{exec}} = \text{CriticLLM}(V_{\text{
 $$\nabla_{V_{\text{plan}}} \mathcal{L}_{\text{exec}} = \text{CriticLLM}\left(V_{\text{plan}}, V_{\text{sql}}, \nabla_{V_{\text{sql}}} \mathcal{L}_{\text{exec}}\right)$$
 This enables upstream attribution: if the SQL query crashed due to an ambiguous column in a 3-table join, the gradient informs $V_{\text{plan}}$ that its join path failed to specify table aliases.
 
-### 2.4 Textual Gradient Optimizer with Momentum
+### 2.7 Textual Gradient Optimizer with Momentum & Rejection Memory
 Standard gradient updates can cause cyclic regressions. We equip the Textual Gradient Descent (TGD) optimizer with a historical rejection buffer $\mathcal{M}_t$:
-$$v_{t+1} = \text{OptimizerLLM}\left(v_t, \nabla_{v_t} \mathcal{L}_{\text{exec}}, \mathcal{M}_t\right)$$
+$$v_{t+1} = \text{OptimizerLLM}\left(v_t, \nabla_{v_t} \mathcal{L}_{\text{exec}}, \mathcal{M}_t, \eta_t\right)$$
 where $\mathcal{M}_t = \{(v_\tau, \nabla_{v_\tau})\}_{\tau=1}^{t-1}$ explicitly penalizes revisiting previously rejected SQL hypotheses.
 
 ---

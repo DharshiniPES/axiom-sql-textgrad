@@ -35,3 +35,15 @@ def test_benchmark_database_seeding():
         assert len(schema) > 50
         assert "Table:" in schema
         sb.close()
+
+
+def test_adversarial_clone_mutation():
+    sb = create_benchmark_sandbox("financial")
+    clone = sb.create_adversarial_clone()
+    assert clone is not None
+    # Verify clone can execute queries
+    res = clone.execute_query("SELECT COUNT(*) FROM customers;")
+    assert res.success is True
+    assert res.data[0][0] > 0
+    clone.close()
+    sb.close()

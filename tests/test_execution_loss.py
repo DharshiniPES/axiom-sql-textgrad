@@ -20,7 +20,7 @@ def test_execution_loss_syntax_error():
 
     assert loss.execution_success is False
     assert loss.loss_breakdown["syntax"] == 1.0
-    assert loss.scalar_loss >= 0.40
+    assert loss.scalar_loss >= 0.30
     assert "EXECUTION FAILURE" in loss.textual_critique_prompt
     assert loss.error_category == "SYNTAX_OR_RUNTIME_ERROR"
 
@@ -67,3 +67,16 @@ def test_execution_loss_success():
     assert loss.loss_breakdown["syntax"] == 0.0
     assert loss.loss_breakdown["cardinality"] == 0.0
     assert loss.error_category == "SUCCESS"
+
+
+def test_ast_divergence_and_complexity():
+    from axiomsql.engine.parser import SQLParser
+    simple_q = "SELECT name FROM customers WHERE id = 1;"
+    complex_q = "SELECT * FROM (SELECT * FROM (SELECT id FROM customers)) c JOIN orders o ON c.id = o.customer_id;"
+    
+    info_simple = SQLParser.analyze_ast_complexity(simple_q)
+    assert info_simple["subquery_depth"] == 0
+    assert info_simple["join_depth"] == 0
+
+    div_complex = SQLParser.calculate_ast_divergence(complex_q)
+    assert div_complex > 0.0

@@ -145,8 +145,12 @@ Requirements:
         self.v_sql.update_value(sql_query)
         return sql_query
 
-    def forward_execute(self, gold_result: Optional[ExecutionResult] = None) -> Tuple[ExecutionResult, ExecutionLossOutput]:
-        """Executes synthesized SQL against the database sandbox and calculates loss."""
+    def forward_execute(
+        self,
+        gold_result: Optional[ExecutionResult] = None,
+        adversarial_sandbox: Optional[DatabaseSandbox] = None,
+    ) -> Tuple[ExecutionResult, ExecutionLossOutput]:
+        """Executes synthesized SQL against the database sandbox and calculates multi-objective loss."""
         sql_query = self.v_sql.value
         exec_result = self.sandbox.execute_query(sql_query)
         loss_output = self.loss_fn.compute(
@@ -154,6 +158,7 @@ Requirements:
             question=self.v_nl.value,
             schema_summary=self.v_schema.value,
             gold_result=gold_result,
+            adversarial_sandbox=adversarial_sandbox,
         )
         return exec_result, loss_output
 

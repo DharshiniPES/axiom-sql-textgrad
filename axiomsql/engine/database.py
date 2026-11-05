@@ -141,6 +141,41 @@ class DatabaseSandbox:
 
         return "\n".join(schema_lines)
 
+    def create_adversarial_clone(self) -> 'DatabaseSandbox':
+        """
+        Novelty Factor: Adversarial Boundary Perturbation Sandbox.
+        Clones database in-memory and injects edge-case boundary values (zeros, nulls)
+        to evaluate query invariance against boundary anomalies.
+        """
+        clone = DatabaseSandbox(":memory:")
+        for line in self._conn.iterdump():
+            try:
+                clone._conn.execute(line)
+            except Exception:
+                pass
+
+        try:
+            cursor = clone._conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+            tables = [r[0] for r in cursor.fetchall()]
+            for tbl in tables:
+                cursor.execute(f"PRAGMA table_info('{tbl}');")
+                cols = cursor.fetchall()
+                for col in cols:
+                    cname = col['name']
+                    ctype = str(col['type']).upper()
+                    is_pk = bool(col['pk'])
+                    if not is_pk and ('INT' in ctype or 'REAL' in ctype):
+                        try:
+                            cursor.execute(f"UPDATE {tbl} SET {cname} = 0 WHERE rowid = (SELECT MIN(rowid) FROM {tbl});")
+                        except Exception:
+                            pass
+            clone._conn.commit()
+        except Exception:
+            pass
+
+        return clone
+
     def get_schema_dict(self) -> Dict[str, Dict[str, Any]]:
         """Extracts structured schema dictionary with columns, types, primary keys, and foreign keys."""
         cursor = self._conn.cursor()

@@ -17,13 +17,15 @@ class TextualGradientOptimizer:
     def __init__(
         self,
         llm: BaseLLM,
-        learning_rate: str = "moderate",  # "conservative", "moderate", "aggressive"
+        learning_rate: str = "moderate",  # "conservative", "moderate", "aggressive", "annealed"
         enable_momentum: bool = True,
+        enable_annealing: bool = True,
         max_memory_history: int = 5,
     ):
         self.llm = llm
         self.learning_rate = learning_rate
         self.enable_momentum = enable_momentum
+        self.enable_annealing = enable_annealing
         self.max_memory_history = max_memory_history
         self.optimization_steps: int = 0
         self.memory_buffer: Dict[str, List[Dict[str, str]]] = {}
@@ -91,12 +93,36 @@ Update the variable to resolve all critiques in the textual gradient.
 Provide ONLY the updated, improved content for '{variable.name}'. Do not wrap in conversational preamble.
 """
 
+        # Novelty Factor: Textual Learning Rate Annealing Schedule
+        # Early steps: high temperature (structural exploration of join topology)
+        # Late steps: low temperature (conservative exploitation of exact token syntax)
+        if self.enable_annealing:
+            if self.optimization_steps <= 1:
+                effective_temp = 0.5
+                anneal_instruction = "\nAnnealing Mode: EXPLORATION (focus on macro join topology and table links)."
+            elif self.optimization_steps <= 3:
+                effective_temp = 0.3
+                anneal_instruction = "\nAnnealing Mode: INTERMEDIATE (focus on WHERE conditions and aggregations)."
+            else:
+                effective_temp = 0.15
+                anneal_instruction = "\nAnnealing Mode: EXPLOITATION (focus on exact token syntax, aliases, and ordering)."
+        else:
+            if self.learning_rate == "conservative":
+                effective_temp = 0.2
+            elif self.learning_rate == "aggressive":
+                effective_temp = 0.6
+            else:
+                effective_temp = 0.4
+            anneal_instruction = ""
+
+        optimizer_prompt += anneal_instruction
+
         from axiomsql.engine.parser import SQLParser
 
         updated_text = self.llm.generate(
             prompt=optimizer_prompt,
             system_prompt=system_prompt,
-            temperature=0.2 if self.learning_rate == "conservative" else 0.4,
+            temperature=effective_temp,
         )
 
         if variable.name == "v_sql":

@@ -72,6 +72,8 @@ def cmd_run_query(payload):
     tau = float(payload.get("tau_confidence", 0.85))
     lr = payload.get("learning_rate", "moderate")
     momentum = bool(payload.get("enable_momentum", True))
+    annealing = bool(payload.get("enable_annealing", True))
+    adversarial = bool(payload.get("enable_adversarial_testing", True))
     backend_type = payload.get("backend", "offline")
     api_key = payload.get("api_key", "")
     weight_cost = float(payload.get("weight_plan_cost", 0.05))
@@ -93,6 +95,8 @@ def cmd_run_query(payload):
         tau_confidence=tau,
         learning_rate=lr,
         enable_momentum=momentum,
+        enable_annealing=annealing,
+        enable_adversarial_testing=adversarial,
         weight_plan_cost=weight_cost,
     )
 

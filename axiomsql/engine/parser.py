@@ -92,3 +92,38 @@ class SQLParser:
         except TypeError:
             # Fallback for unhashable types if any
             return sorted(str(x) for x in pred_data) == sorted(str(x) for x in gold_data)
+
+    @staticmethod
+    def analyze_ast_complexity(query: str) -> Dict[str, int]:
+        """
+        Novelty Factor: Symbolic AST complexity signature.
+        Extracts join depth, subquery nesting count, aggregation count, and predicate filters.
+        """
+        q_lower = query.lower()
+        joins = len(re.findall(r"\bjoin\b", q_lower))
+        selects = len(re.findall(r"\bselect\b", q_lower))
+        subqueries = max(0, selects - 1)
+        aggs = len(re.findall(r"\b(avg|sum|count|min|max)\b", q_lower))
+        filters = len(re.findall(r"\b(where|having|and|or)\b", q_lower))
+
+        return {
+            "join_depth": joins,
+            "subquery_depth": subqueries,
+            "aggregation_count": aggs,
+            "filter_count": filters,
+            "complexity_score": joins * 2 + subqueries * 3 + aggs + filters,
+        }
+
+    @staticmethod
+    def calculate_ast_divergence(query: str) -> float:
+        """
+        Novelty Factor: AST Tree Divergence Regularization.
+        Penalizes redundant subquery nesting and bloated Cartesian paths.
+        """
+        info = SQLParser.analyze_ast_complexity(query)
+        penalty = 0.0
+        if info["subquery_depth"] >= 2:
+            penalty += 0.35
+        if info["join_depth"] >= 4:
+            penalty += 0.25
+        return min(1.0, penalty)

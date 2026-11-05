@@ -56,15 +56,33 @@ We formulate Text-to-SQL generation as a directed acyclic computational graph $\
 \end{itemize}
 
 \subsection{Multi-Objective Execution Loss Engine}
-Upon executing $V_{\text{sql}}$ in a sandboxed relational database engine, we calculate the execution loss vector:
+Upon executing $V_{\text{sql}}$ in a sandboxed relational database engine, we calculate the execution loss vector across eight normalized objective components:
 \begin{equation}
-    \vec{\mathcal{L}}_{\text{exec}} = \langle \mathcal{L}_{\text{syntax}}, \mathcal{L}_{\text{schema}}, \mathcal{L}_{\text{cardinality}}, \mathcal{L}_{\text{semantic}} \rangle
+    \vec{\mathcal{L}}_{\text{exec}} = \langle \mathcal{L}_{\text{syntax}}, \mathcal{L}_{\text{schema}}, \mathcal{L}_{\text{cardinality}}, \mathcal{L}_{\text{semantic}}, \mathcal{L}_{\text{plan\_cost}}, \mathcal{L}_{\text{ast\_cycles}}, \mathcal{L}_{\text{ast\_div}}, \mathcal{L}_{\text{robust}} \rangle
 \end{equation}
-The aggregated scalar loss is computed as:
+The aggregated scalar loss is computed as a normalized convex combination:
 \begin{equation}
-    \mathcal{L}_{\text{exec}} = w_1 \mathcal{L}_{\text{syntax}} + w_2 \mathcal{L}_{\text{schema}} + w_3 \mathcal{L}_{\text{cardinality}} + w_4 \mathcal{L}_{\text{semantic}}
+    \mathcal{L}_{\text{exec}} = \sum_{i=1}^8 w_i \mathcal{L}_i \quad \text{subject to} \quad \sum_{i=1}^8 w_i = 1.00, \quad w_i \ge 0
 \end{equation}
-where $\sum_{i=1}^4 w_i = 1$. The cardinality loss $\mathcal{L}_{\text{cardinality}}$ penalizes the empty-result trap ($|R(Q)| = 0$) when non-empty records were expected.
+with calibrated weights $w = \langle 0.30, 0.15, 0.15, 0.15, 0.08, 0.07, 0.05, 0.05 \rangle$.
+
+\subsection{Novelty Formulations: Robustness, AST Divergence, and Annealing}
+\paragraph{Adversarial Database Boundary Perturbation ($\mathcal{L}_{\text{robust}}$):}
+We instantiate an in-memory clone $\mathcal{D}_{\text{adv}}$ via SQLite \texttt{iterdump()} and inject zero-balance and nullified-attribute mutations into sample rows. If $V_{\text{sql}}$ fails or raises unhandled division-by-zero on $\mathcal{D}_{\text{adv}}$, $\mathcal{L}_{\text{robust}} = 1.0$, prompting the critic to enforce \texttt{NULLIF()} and \texttt{COALESCE()} defenses.
+
+\paragraph{Symbolic AST Tree Divergence Regularization ($\mathcal{L}_{\text{ast\_div}}$):}
+We extract structural metrics: subquery nesting depth $d_{\text{nest}}$ and join complexity depth $d_{\text{join}}$. The divergence metric:
+\begin{equation}
+    \Delta_{\text{AST}}(Q_t, Q_{t-1}) = |d_{\text{nest}}(t) - d_{\text{nest}}(t-1)| + |d_{\text{join}}(t) - d_{\text{join}}(t-1)|
+\end{equation}
+regularizes the loss against erratic structural jumps, preventing chaotic mutations between iterations.
+
+\paragraph{Textual Learning Rate Annealing Schedule ($\eta_t$):}
+Analogous to continuous learning rate decay in gradient descent, we anneal the optimizer temperature:
+\begin{equation}
+    \eta_t = \eta_{\min} + \frac{1}{2}(\eta_0 - \eta_{\min})\left(1 + \cos\left(\frac{\pi t}{K_{\max}}\right)\right)
+\end{equation}
+with $\eta_0 = 0.50$ (initial structural exploration) decaying to $\eta_{\min} = 0.15$ (surgical token exploitation), stabilizing late-stage convergence.
 
 \subsection{Textual Gradient Backpropagation}
 Automatic differentiation is performed via LLM-mediated critiques in reverse topological order:

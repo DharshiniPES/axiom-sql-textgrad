@@ -2,9 +2,9 @@
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-green.svg)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/PyTest-14%2F14%20Passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/PyTest-16%2F16%20Passing-brightgreen.svg)](tests/)
 [![Dashboard](https://img.shields.io/badge/Studio-Node.js%20Express-blueviolet.svg)](server.js)
-[![Presentation](https://img.shields.io/badge/Deck-PPTX%20Available-orange.svg)](presentation/AxiomSQL_Presentation.pptx)
+[![Presentation](https://img.shields.io/badge/Deck-14%20Slide%20PPTX-orange.svg)](presentation/AxiomSQL_Presentation.pptx)
 [![Paper](https://img.shields.io/badge/Research%20Paper-Conference%20Ready-purple.svg)](paper/PAPER.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -72,16 +72,24 @@ Converting natural language questions into relational SQL queries (Text-to-SQL) 
 ### 1. Two-Stage Differentiable Computational Graph
 Decouples high-level relational query planning ($V_{\text{plan}}$) from concrete dialect code synthesis ($V_{\text{sql}}$). When execution fails, errors in joins or projections backpropagate upstream from $V_{\text{sql}}$ to $V_{\text{plan}}$.
 
-### 2. Multi-Objective Execution Loss Engine with Novelty G-Factors
+### 2. Multi-Objective Execution Loss Engine with 8 Objective Components
 Transforms runtime database feedback into structured differentiable loss vectors:
-$$\mathcal{L}_{\text{exec}} = w_1 \mathcal{L}_{\text{syntax}} + w_2 \mathcal{L}_{\text{schema}} + w_3 \mathcal{L}_{\text{cardinality}} + w_4 \mathcal{L}_{\text{semantic}} + w_5 \mathcal{L}_{\text{plan\_cost}} + w_6 \mathcal{L}_{\text{ast\_cycle}}$$
+$$\mathcal{L}_{\text{exec}} = \sum_{i=1}^8 w_i \mathcal{L}_i \quad \text{subject to} \quad \sum_{i=1}^8 w_i = 1.00$$
 
-* **Novelty Factor 1: EXPLAIN-Grounded Query Cost Optimization ($\mathcal{L}_{\text{plan\_cost}}$):** Inspects the database execution plan via `EXPLAIN QUERY PLAN`. Penalizes unindexed full-table scans (`SCAN TABLE`) and temporary B-Trees (`USE TEMP B-TREE`), guiding TextGrad to synthesize index-friendly, performant queries.
-* **Novelty Factor 2: Empty-Set Trap Cardinality Regularization ($\mathcal{L}_{\text{cardinality}}$):** Detects queries that compile cleanly but return 0 rows. Injects cardinality gradients instructing the optimizer to loosen over-constrained `WHERE` predicates or fix string literal casing.
-* **Novelty Factor 3: AST Cycle & Cross-Product Pruning ($\mathcal{L}_{\text{ast\_cycle}}$):** Analyzes query AST to detect Cartesian products (comma-separated table lists without join conditions) and redundant self-join cycles, enforcing clean ANSI JOIN syntax.
+* **1. Syntax & Execution Validity ($\mathcal{L}_{\text{syntax}}$):** Immediate 1.0 penalty on database compile exceptions.
+* **2. Schema Alignment ($\mathcal{L}_{\text{schema}}$):** Measures ratio of hallucinated table or column identifiers in AST.
+* **3. Empty-Set Trap Cardinality Regularization ($\mathcal{L}_{\text{cardinality}}$):** Detects queries that compile cleanly but return 0 rows. Injects cardinality gradients instructing the optimizer to loosen over-constrained `WHERE` predicates.
+* **4. Semantic Consistency ($\mathcal{L}_{\text{semantic}}$):** Jaccard set discrepancy against gold probe benchmarks.
+* **5. EXPLAIN-Grounded Query Cost Optimization ($\mathcal{L}_{\text{plan\_cost}}$):** Inspects the database execution plan via `EXPLAIN QUERY PLAN`. Penalizes unindexed full-table scans (`SCAN TABLE`) and temporary B-Trees (`USE TEMP B-TREE`).
+* **6. AST Cycle & Cross-Product Pruning ($\mathcal{L}_{\text{ast\_cycle}}$):** Analyzes query AST to detect Cartesian products and redundant self-join cycles.
+* **7. Symbolic AST Tree Divergence Regularization ($\mathcal{L}_{\text{ast\_div}}$):** Profiles subquery nesting depth ($d_{\text{nest}}$) and join complexity depth ($d_{\text{join}}$). Penalizes chaotic structural variance across iterations.
+* **8. Adversarial Database Boundary Perturbation ($\mathcal{L}_{\text{robust}}$):** Replicates the database in-memory via SQLite `iterdump()` and injects zero/null edge mutations. Penalizes queries vulnerable to division-by-zero or missing null coalescence.
 
-### 3. Textual Momentum and Anti-Oscillation Memory Buffer
-Maintains historical rejection trajectories $\mathcal{M}_t = \{(v_\tau, \nabla_{v_\tau})\}_{\tau=1}^{t-1}$ to penalize revisiting failed SQL hypotheses and prevent cyclic loops.
+### 3. Textual Learning Rate Annealing Schedule ($\eta_t$) & Momentum
+* **Cosine Annealing Schedule:** Emulates continuous deep learning learning-rate decay in textual optimization:
+  $$\eta_t = \eta_{\min} + \frac{1}{2}(\eta_0 - \eta_{\min})\left(1 + \cos\left(\frac{\pi t}{K_{\max}}\right)\right)$$
+  Decays from $\eta_0 = 0.50$ (structural exploration) to $\eta_{\min} = 0.15$ (surgical token exploitation), stabilizing late iterations.
+* **Anti-Oscillation Momentum Memory Buffer:** Maintains historical rejection trajectories $\mathcal{M}_t = \{(v_\tau, \nabla_{v_\tau})\}_{\tau=1}^{t-1}$ to penalize revisiting failed SQL hypotheses and prevent cyclic repair loops.
 
 ### 4. Adaptive Stopping Controller (Dynamic Hyperparameter K)
 Unlike fixed-budget systems, AxiomSQL treats the number of reiterations as a dynamic hyperparameter chosen according to intermediate execution feedback:

@@ -170,6 +170,8 @@ async function runOptimization() {
   const tau = parseFloat(document.getElementById('tauInput').value);
   const lr = document.getElementById('learningRateSelect').value;
   const momentum = document.getElementById('momentumCheckbox').checked;
+  const annealing = document.getElementById('annealingCheckbox').checked;
+  const adversarial = document.getElementById('adversarialCheckbox').checked;
   const costWeight = parseFloat(document.getElementById('costWeightInput').value);
   const backend = document.getElementById('backendSelect').value;
   const apiKey = document.getElementById('apiKeyInput').value;
@@ -182,6 +184,8 @@ async function runOptimization() {
     tau_confidence: tau,
     learning_rate: lr,
     enable_momentum: momentum,
+    enable_annealing: annealing,
+    enable_adversarial_testing: adversarial,
     weight_plan_cost: costWeight,
     backend,
     api_key: apiKey
@@ -237,6 +241,25 @@ function renderResults(data) {
   document.getElementById('resRowCount').textContent = `${data.execution_result.row_count} rows`;
   document.getElementById('resLatency').textContent = `${(data.total_duration_seconds * 1000).toFixed(1)} ms`;
   document.getElementById('resPolicy').textContent = data.stopping_decision.strategy_used.toUpperCase();
+
+  // Novelty Factors: AST Divergence & Adversarial Robustness
+  const lastTrace = data.history && data.history.length > 0 ? data.history[data.history.length - 1] : null;
+  const astDivVal = (lastTrace && lastTrace.loss_output.loss_breakdown.ast_divergence !== undefined)
+    ? Number(lastTrace.loss_output.loss_breakdown.ast_divergence).toFixed(2)
+    : '0.00';
+  document.getElementById('resAstDiv').textContent = astDivVal;
+
+  const robustLoss = (lastTrace && lastTrace.loss_output.loss_breakdown.adversarial_robustness !== undefined)
+    ? lastTrace.loss_output.loss_breakdown.adversarial_robustness
+    : 0.0;
+  const robustElem = document.getElementById('resRobust');
+  if (robustLoss === 0.0) {
+    robustElem.textContent = 'VERIFIED';
+    robustElem.style.color = '#34d399';
+  } else {
+    robustElem.textContent = 'MUTATED';
+    robustElem.style.color = '#fbbf24';
+  }
 
   // Stopping Decision
   document.getElementById('stoppingReasonText').textContent = data.stopping_decision.reason;
@@ -366,6 +389,8 @@ function renderAccordion(history) {
             <div>- Semantic Discrepancy Loss: ${t.loss_output.loss_breakdown.semantic || 0}</div>
             <div>- Plan Scan Cost Penalty: ${t.loss_output.loss_breakdown.plan_cost || 0}</div>
             <div>- AST Cross-Product Penalty: ${t.loss_output.loss_breakdown.ast_cycle || 0}</div>
+            <div>- AST Tree Divergence Penalty: ${t.loss_output.loss_breakdown.ast_divergence || 0}</div>
+            <div>- Adversarial Boundary Robustness: ${t.loss_output.loss_breakdown.adversarial_robustness || 0}</div>
           </div>
           <div class="panel-subhead" style="margin-top: 10px;">Textual Gradient Feedback (&nabla; L)</div>
           <div class="code-container"><pre><code style="color: #fbbf24;">${escapeHtml(t.sql_gradient || 'No gradient')}</code></pre></div>

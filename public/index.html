@@ -104,6 +104,16 @@
             <input type="checkbox" id="momentumCheckbox" checked>
             <label for="momentumCheckbox">Anti-Oscillation Momentum Memory</label>
           </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="annealingCheckbox" checked>
+            <label for="annealingCheckbox">LR Annealing Schedule (eta_t)</label>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="adversarialCheckbox" checked>
+            <label for="adversarialCheckbox">Adversarial Boundary Mutation Test</label>
+          </div>
         </div>
 
         <div class="sidebar-footer">
@@ -164,6 +174,14 @@
               <div class="telemetry-card">
                 <div class="telemetry-label">Stopping Policy</div>
                 <div class="telemetry-value" id="resPolicy">--</div>
+              </div>
+              <div class="telemetry-card">
+                <div class="telemetry-label">AST Divergence</div>
+                <div class="telemetry-value" id="resAstDiv">0.00</div>
+              </div>
+              <div class="telemetry-card">
+                <div class="telemetry-label">Boundary Invariant</div>
+                <div class="telemetry-value" id="resRobust">VERIFIED</div>
               </div>
             </div>
 
